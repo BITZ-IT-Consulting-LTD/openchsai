@@ -103,7 +103,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_HOST: "192.168.8.13",
             SIP_WS_URL: "wss://192.168.8.13/ws/",
             SIP_USER_PREFIX: "",
-            SIP_PASS_PREFIX: import.meta.env.VITE_SIP_PASS_PREFIX || '',
+            SIP_PASS_PREFIX: import.meta.env?.VITE_SIP_PASS_PREFIX || '',
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' }
             ]
@@ -175,7 +175,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_HOST: "192.168.10.119",
             SIP_WS_URL: "wss://192.168.10.119/ws/",
             SIP_USER_PREFIX: "",
-            SIP_PASS_PREFIX: import.meta.env.VITE_SIP_PASS_PREFIX || '',
+            SIP_PASS_PREFIX: import.meta.env?.VITE_SIP_PASS_PREFIX || '',
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' }
             ]
@@ -247,7 +247,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_HOST: "demo-openchs.bitz-itc.com",
             SIP_WS_URL: "wss://demo-openchs.bitz-itc.com/ws/",
             SIP_USER_PREFIX: "",
-            SIP_PASS_PREFIX: import.meta.env.VITE_SIP_PASS_PREFIX || '',
+            SIP_PASS_PREFIX: import.meta.env?.VITE_SIP_PASS_PREFIX || '',
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' }
             ]
@@ -299,6 +299,6 @@ export const ENVIRONMENT_REGISTRY = {
  * Helper to get the correct config for a country or environment
  */
 export function getEnvironmentConfig(countryCode) {
-    const code = (countryCode || import.meta.env.VITE_DEFAULT_COUNTRY || 'TZ').toUpperCase();
+    const code = (countryCode || import.meta.env?.VITE_DEFAULT_COUNTRY || 'TZ').toUpperCase();
     return ENVIRONMENT_REGISTRY[code] || ENVIRONMENT_REGISTRY['DEMO'];
 }
