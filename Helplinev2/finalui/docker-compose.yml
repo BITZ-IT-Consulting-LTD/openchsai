@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VITE_DEFAULT_COUNTRY=${VITE_DEFAULT_COUNTRY:-KE_LOCAL}
+        - VITE_SIP_PASS_PREFIX=${VITE_SIP_PASS_PREFIX}
     container_name: helpline-ui
     ports:
       - "8098:80"

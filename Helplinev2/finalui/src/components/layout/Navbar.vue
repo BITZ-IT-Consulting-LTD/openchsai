@@ -16,23 +16,52 @@
         </div>
       </div>
 
-      <!-- Center: Spacer (Search removed/Status moved to Overlay) -->
+      <!-- Center: Agent Status Indicator -->
       <div class="hidden lg:flex items-center justify-center flex-1 mx-8 relative">
-        <!-- Search or other widgets can go here -->
+        <div v-if="authStore.isAuthenticated" class="flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300"
+          :class="statusBarClass">
+          <!-- Status Dot -->
+          <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="statusDotClass"></div>
+
+          <!-- Status Text -->
+          <span class="text-xs font-bold uppercase tracking-wider" :class="statusTextClass">
+            {{ agentStatusText }}
+          </span>
+
+          <!-- Extension -->
+          <span v-if="authStore.user?.extension && queueStatus !== 'offline'"
+            class="text-[10px] font-medium opacity-50 border-l pl-3"
+            :class="isDarkMode ? 'border-white/10' : 'border-gray-200'">
+            Ext {{ authStore.user.extension }}
+          </span>
+
+          <!-- Caller Number (ringing/active/wrapup) -->
+          <span v-if="activeCallStore.callerNumber && ['ringing', 'active', 'calling', 'wrapup'].includes(activeCallStore.callState)"
+            class="text-xs font-bold"
+            :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            {{ activeCallStore.callerNumber }}
+          </span>
+
+          <!-- Duration (on call) -->
+          <span v-if="isCallActive" class="text-xs font-mono font-black tracking-wider text-emerald-500">
+            {{ activeCallStore.formatDuration(activeCallStore.durationSeconds) }}
+          </span>
+
+          <!-- End Wrapup Button -->
+          <button v-if="isWrapup" @click.stop="activeCallStore.endWrapup()"
+            class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-colors"
+            :class="isDarkMode
+              ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+              : 'bg-orange-100 text-orange-600 hover:bg-orange-200'">
+            Clear
+          </button>
+        </div>
       </div>
 
       <!-- Right: Actions & User Profile -->
       <div class="flex items-center gap-1 lg:gap-3 relative nav-actions font-sans">
         <!-- Softphone (Call Actions) -->
         <div class="flex items-center gap-1">
-          <!-- Incoming Simulate Trigger -->
-          <button @click.stop="triggerIncomingCall" class="p-2 rounded-xl transition-all duration-300 relative group"
-            :class="isIncomingCall
-              ? 'text-amber-500 bg-amber-500/10'
-              : (isDarkMode ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900')">
-            <i-mdi-phone-incoming class="w-5 h-5" />
-          </button>
-
           <!-- Dialer Toggle -->
           <div class="relative">
             <button @click.stop="toggleDropdown('softphone')"
@@ -355,7 +384,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onUnmounted, markRaw, watch } from 'vue'
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useSearchStore } from '@/stores/search'
@@ -363,12 +392,9 @@
   import { useActivitiesStore } from '@/stores/activities'
   import { useActiveCallStore } from '@/stores/activeCall'
   import { useSipStore } from '@/stores/sip'
-  import { useWebRtcClient } from '@/composables/useWebRtcClient'
   import { storeToRefs } from 'pinia'
-  import NotificationBadge from '@/components/base/NotificationBadge.vue'
   import Dialpad from '@/components/softphone/Dialpad.vue'
   import { toast } from 'vue-sonner'
-  import axiosInstance from '@/utils/axios'
 
   // Navbar setup initialized
 
@@ -411,22 +437,66 @@
 
   const dropdown = ref(null)
 
+  // Queue state (reactive ref from store)
+  const { queueStatus } = storeToRefs(activeCallStore)
+
   const isCallActive = computed(() => activeCallStore.callState === 'active')
   const isIncomingCall = computed(() => activeCallStore.callState === 'ringing')
   const isCalling = computed(() => activeCallStore.callState === 'calling')
-  
-  const triggerIncomingCall = () => {
-    activeCallStore.onIncomingCall({
-      id: 'SIMULATED-call-id-123',
-      remoteIdentity: { uri: { user: '+254700000000' } },
-      state: 'Initial',
-      reject: () => { },
-      accept: () => console.log('Simulated Accept')
-    })
-  }
+  const isWrapup = computed(() => activeCallStore.callState === 'wrapup')
 
+  // Agent status indicator computeds
+  const agentStatusText = computed(() => {
+    if (queueStatus.value === 'joining') return 'Connecting...'
+    if (queueStatus.value === 'offline') return 'Offline'
+    switch (activeCallStore.callState) {
+      case 'ringing': return 'Ringing'
+      case 'active': return 'On Call'
+      case 'calling': return 'Dialing'
+      case 'wrapup': return 'Wrapup'
+      default: return 'Available'
+    }
+  })
+
+  const statusDotClass = computed(() => {
+    if (queueStatus.value === 'offline') return 'bg-gray-400'
+    if (queueStatus.value === 'joining') return 'bg-amber-400 animate-pulse'
+    switch (activeCallStore.callState) {
+      case 'ringing': return 'bg-amber-400 animate-pulse'
+      case 'active': return 'bg-emerald-500 animate-pulse'
+      case 'calling': return 'bg-blue-400 animate-pulse'
+      case 'wrapup': return 'bg-orange-400'
+      default: return 'bg-emerald-500'
+    }
+  })
+
+  const statusTextClass = computed(() => {
+    const dark = props.isDarkMode
+    if (queueStatus.value === 'offline') return 'text-gray-500'
+    if (queueStatus.value === 'joining') return dark ? 'text-amber-400' : 'text-amber-600'
+    switch (activeCallStore.callState) {
+      case 'ringing': return dark ? 'text-amber-400' : 'text-amber-600'
+      case 'active': return dark ? 'text-emerald-400' : 'text-emerald-600'
+      case 'calling': return dark ? 'text-blue-400' : 'text-blue-600'
+      case 'wrapup': return dark ? 'text-orange-400' : 'text-orange-600'
+      default: return dark ? 'text-emerald-400' : 'text-emerald-600'
+    }
+  })
+
+  const statusBarClass = computed(() => {
+    const dark = props.isDarkMode
+    if (queueStatus.value === 'offline') return dark ? 'bg-white/5' : 'bg-gray-50'
+    if (queueStatus.value === 'joining') return dark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'
+    switch (activeCallStore.callState) {
+      case 'ringing': return dark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'
+      case 'active': return dark ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-emerald-50 border border-emerald-200'
+      case 'calling': return dark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
+      case 'wrapup': return dark ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50 border border-orange-200'
+      default: return dark ? 'bg-white/5' : 'bg-gray-50'
+    }
+  })
+  
     // Queue handling – use activeCallStore persistence
-    const { queueStatus } = storeToRefs(activeCallStore)
     const isQueueActionLoading = ref(false)
 
     const handleQueueAction = async () => {

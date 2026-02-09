@@ -223,6 +223,9 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('queueStatus')
 
       delete axiosInstance.defaults.headers.common['Session-Id']
+
+      // Clear server session cookie to prevent stale session reuse on next login
+      document.cookie = 'HELPLINE_SESSION_ID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
     },
 
     // Initialize auth state
