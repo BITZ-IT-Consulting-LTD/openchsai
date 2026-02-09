@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import axiosInstance from '@/utils/axios'
-import { ref, watch } from 'vue'
-import { useRealtimeStore } from './realtime'
+import { ref } from 'vue'
 
 export const useActiveCallStore = defineStore('activeCall', () => {
     // State
@@ -288,12 +287,16 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
 
-    // ── Server-side queue sync via realtime store (AMI channels) ──────
-    // Watches the AMI WebSocket data to detect when the agent is removed
-    // from the queue externally (e.g., by a supervisor or legacy UI).
-    let queueSyncWatcher = null
+    // ── Server-side queue sync via AMI channel data ─────────────────
+    // Periodically checks the AMI realtime store to detect when the agent
+    // is removed from the queue externally (e.g., by a supervisor or legacy UI).
+    // AMI queue member entries have UniqueIDs ending in "-mbr" with context
+    // "agentlogin" and event "mbradd". The isExtensionInQueue getter in
+    // the realtime store matches these entries via CHAN_EXTEN.
+    let queueSyncTimer = null
     let consecutiveMisses = 0
-    const MISS_THRESHOLD = 3 // Require 3 consecutive misses before transitioning offline
+    const MISS_THRESHOLD = 3
+    const SYNC_INTERVAL = 10000 // 10 seconds
 
     async function getAgentExtension() {
         const authStore = (await import('./auth')).useAuthStore()
@@ -302,44 +305,53 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     }
 
     function startQueueSync() {
-        if (queueSyncWatcher) return
-
-        const realtimeStore = useRealtimeStore()
-        consecutiveMisses = 0
+        if (queueSyncTimer) return
 
         console.log('[Queue Sync] Starting AMI-based queue state sync')
+        consecutiveMisses = 0
 
-        queueSyncWatcher = watch(
-            () => realtimeStore.amiChannels,
-            async () => {
-                // Only sync when AMI is actually connected
-                if (realtimeStore.amiReady !== 'open') return
+        queueSyncTimer = setInterval(async () => {
+            if (queueStatus.value !== 'online') {
+                stopQueueSync()
+                return
+            }
 
-                const ext = await getAgentExtension()
-                if (!ext) return
+            const ext = await getAgentExtension()
+            if (!ext) return
+
+            try {
+                const realtimeStore = (await import('./realtime')).useRealtimeStore()
+
+                // Skip check if AMI WebSocket is not connected
+                if (!realtimeStore.isAmiConnected) return
 
                 const isPresent = realtimeStore.isExtensionInQueue(ext)
 
-                if (queueStatus.value === 'online' && !isPresent) {
+                if (!isPresent) {
                     consecutiveMisses++
+                    console.log(`[Queue Sync] Extension ${ext} not in AMI data (miss ${consecutiveMisses}/${MISS_THRESHOLD})`)
                     if (consecutiveMisses >= MISS_THRESHOLD) {
-                        console.log(`[Queue Sync] Extension ${ext} not in AMI channels for ${consecutiveMisses} updates — marking offline`)
+                        console.log(`[Queue Sync] Extension ${ext} not found in AMI for ${consecutiveMisses} checks — marking offline`)
                         setQueueStatus('offline')
                         stopQueueSync()
                     }
                 } else {
+                    if (consecutiveMisses > 0) {
+                        console.log(`[Queue Sync] Extension ${ext} found in AMI — resetting miss counter`)
+                    }
                     consecutiveMisses = 0
                 }
-            },
-            { deep: true }
-        )
+            } catch (e) {
+                // Error — don't count as miss
+            }
+        }, SYNC_INTERVAL)
     }
 
     function stopQueueSync() {
-        if (queueSyncWatcher) {
+        if (queueSyncTimer) {
             console.log('[Queue Sync] Stopping AMI-based queue state sync')
-            queueSyncWatcher() // dispose the watcher
-            queueSyncWatcher = null
+            clearInterval(queueSyncTimer)
+            queueSyncTimer = null
             consecutiveMisses = 0
         }
     }
@@ -351,17 +363,6 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         console.log(`[Queue Status Change] ${queueStatus.value} -> ${status}`)
         queueStatus.value = status
         localStorage.setItem('queueStatus', status)
-    }
-
-    async function checkWallboard(ext) {
-        try {
-            const { data } = await axiosInstance.get('api/wallonly/', {
-                params: { exten: ext, _c: 1 }
-            })
-            return data
-        } catch (e) {
-            // silent check
-        }
     }
 
     async function joinQueue() {
@@ -416,8 +417,6 @@ export const useActiveCallStore = defineStore('activeCall', () => {
             if (response.status === 200 || response.status === 203) {
                 setQueueStatus('online')
                 startQueueSync()
-                // Immediate validation
-                await checkWallboard(ext)
             } else {
                 setQueueStatus('offline')
             }
@@ -451,9 +450,6 @@ export const useActiveCallStore = defineStore('activeCall', () => {
 
             setQueueStatus('offline')
             stopQueueSync()
-
-            // Immediate validation
-            if (ext) await checkWallboard(ext)
 
         } catch (e) {
             console.error('Queue leave failed', e.message)
