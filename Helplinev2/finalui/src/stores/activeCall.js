@@ -14,6 +14,7 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     const durationSeconds = ref(0)
     const hasAudioTrack = ref(false)
     const autoAnswerEnabled = ref(localStorage.getItem('sip_auto_answer') === 'true')
+    const awaitingQueueConfirmation = ref(false)
 
     function toggleAutoAnswer() {
         autoAnswerEnabled.value = !autoAnswerEnabled.value
@@ -85,16 +86,22 @@ export const useActiveCallStore = defineStore('activeCall', () => {
 
         src_uid.value = null // Will be set later via AMI or header
 
+        // Queue confirmation call: Asterisk sends INVITE after agent joins queue.
+        // Auto-answer this to complete the login, same as the old UI behavior.
+        if (awaitingQueueConfirmation.value) {
+            console.log('[ActiveCall] Queue confirmation call detected — auto-answering in 500ms...')
+            awaitingQueueConfirmation.value = false
+            setTimeout(() => answerCall(), 500)
+            return // Don't ring for confirmation calls
+        }
+
         playRingtone()
 
-        console.error('[ActiveCall] POPUP STATE SHOULD NOW BE RINGING');
-
-        /* Disable auto-answer during diagnosis to ensure popup remains visible 
+        // Auto-answer if user has enabled the toggle
         if (autoAnswerEnabled.value) {
-            console.log('Auto-Answering enabled, answering in 500ms...')
+            console.log('[ActiveCall] Auto-answer enabled — answering in 500ms...')
             setTimeout(() => answerCall(), 500)
         }
-        */
     }
 
     function startOutboundCall(session) {
@@ -326,15 +333,31 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     }
 
     async function joinQueue() {
+        // Guard against duplicate joins (e.g., SIP onRegistered re-triggering)
+        if (queueStatus.value === 'online' || queueStatus.value === 'joining') {
+            console.log('[ActiveCall] Already', queueStatus.value, '— skipping duplicate joinQueue')
+            return true
+        }
+
         try {
             const authStore = (await import('./auth')).useAuthStore()
             const sipStore = (await import('./sip')).useSipStore()
 
-            // Trigger SIP registration if not already active
-            if (!sipStore.isConnected && !sipStore.isRegistering) {
-                sipStore.start().catch(err => {
-                    console.error('[Helper] SIP auto-start check:', err)
-                })
+            // Ensure SIP is registered BEFORE telling Asterisk to join queue.
+            // Asterisk sends a confirmation INVITE immediately — SIP must be ready to receive it.
+            if (!sipStore.isRegistered) {
+                if (!sipStore.isConnected && !sipStore.isRegistering) {
+                    await sipStore.start()
+                }
+                // Wait for registration to complete (up to 5 seconds)
+                let attempts = 0
+                while (!sipStore.isRegistered && attempts < 20) {
+                    await new Promise(r => setTimeout(r, 250))
+                    attempts++
+                }
+                if (!sipStore.isRegistered) {
+                    throw new Error('SIP registration failed. Cannot join queue without voice connection.')
+                }
             }
 
             let ext = authStore.profile?.extension || authStore.profile?.exten || sipStore.extension
@@ -350,8 +373,9 @@ export const useActiveCallStore = defineStore('activeCall', () => {
             initRingtone()
 
             setQueueStatus('joining')
+            awaitingQueueConfirmation.value = true
 
-            // Authoritative payload: Only action "1"
+            console.log('[ActiveCall] SIP registered, sending join queue to Asterisk...')
             const payload = { action: '1' }
 
             const response = await axiosInstance.post('api/agent/', payload)
@@ -367,12 +391,14 @@ export const useActiveCallStore = defineStore('activeCall', () => {
             return true
         } catch (e) {
             console.error("Queue join failed:", e.message)
+            awaitingQueueConfirmation.value = false
             setQueueStatus('offline')
             throw e
         }
     }
 
     async function leaveQueue() {
+        awaitingQueueConfirmation.value = false
         try {
             const authStore = (await import('./auth')).useAuthStore()
             const sipStore = (await import('./sip')).useSipStore()
@@ -447,6 +473,7 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         resetCall,
         setAmiUniqueId,
         autoAnswerEnabled,
+        awaitingQueueConfirmation,
         toggleAutoAnswer,
         initializeQueue,
         resetQueueState

@@ -26,15 +26,21 @@
 </template>
 
 <script setup>
-import { computed, provide } from 'vue'
+import { computed, provide, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
+import { useAuthStore } from '@/stores/auth'
+import { useRealtimeStore } from '@/stores/realtime'
+import { useActiveCallStore } from '@/stores/activeCall'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import Navbar from '@/components/layout/Navbar.vue'
 import ActiveCallToolbar from '@/components/softphone/ActiveCallToolbar.vue'
 
 const route = useRoute()
 const { isDarkMode, toggleTheme } = useTheme()
+const authStore = useAuthStore()
+const realtimeStore = useRealtimeStore()
+const activeCallStore = useActiveCallStore()
 
 // Provide theme to all child components
 provide('isDarkMode', isDarkMode)
@@ -44,4 +50,47 @@ provide('toggleTheme', toggleTheme)
 const showSidebar = computed(() => {
   return route.path !== '/login'
 })
+
+// ── Global Real-Time Connections ────────────────────────────────
+onMounted(() => {
+  if (authStore.isAuthenticated && route.path !== '/login') {
+    realtimeStore.connect()
+  }
+})
+
+// React to auth changes (login/logout)
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    realtimeStore.connect()
+  } else {
+    realtimeStore.disconnect()
+  }
+})
+
+onBeforeUnmount(() => {
+  realtimeStore.disconnect()
+})
+
+// ── AMI → activeCall Enrichment Bridge ──────────────────────────
+// When a call is active, find its AMI channel and sync UniqueID
+watch(
+  () => realtimeStore.amiChannelsList,
+  (channels) => {
+    if (!['ringing', 'active', 'calling'].includes(activeCallStore.callState)) return
+    if (activeCallStore.src_uid) return // Already have it
+
+    const ext = authStore.profile?.extension || authStore.profile?.exten
+    if (!ext) return
+
+    const match = channels.find(ch =>
+      ch.CHAN_EXTEN === String(ext) ||
+      ch.CHAN_CALLERID_NUM === activeCallStore.callerNumber
+    )
+
+    if (match?.CHAN_UNIQUEID) {
+      console.log('[Realtime] AMI enrichment: syncing UniqueID', match.CHAN_UNIQUEID)
+      activeCallStore.setAmiUniqueId(match.CHAN_UNIQUEID)
+    }
+  }
+)
 </script>

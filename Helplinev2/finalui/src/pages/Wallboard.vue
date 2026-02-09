@@ -34,15 +34,14 @@
   import CallersTable from '@/components/wallboard/CallersTable.vue'
 
   // Import utilities
-  import { useWebSocketConnection } from '@/composables/useWebSocketConnection.js'
+  import { useRealtimeStore } from '@/stores/realtime'
   import { useCounsellorData } from '@/composables/useCounsellorData'
   import { useApiData } from '@/composables/useApiData'
   import { formatDuration, getStatusText } from '@/utils/formatters'
   import { useTheme } from '@/composables/useTheme'
-  import { useTaxonomyStore } from '@/stores/taxonomy'
 
   export default {
-    name: 'App',
+    name: 'Wallboard',
     components: {
       WallboardHeader,
       CasesTiles,
@@ -50,49 +49,12 @@
       CallersTable
     },
     setup() {
-      // Shared theme
       const { isDarkMode, toggleTheme } = useTheme()
-      const taxonomyStore = useTaxonomyStore()
-
-      // Resolve dynamic AMI host from registry
-      const getWsHost = (host) => {
-        if (!host) return host
-
-        let targetHost = host;
-
-        // Smart Dev Proxy: Route traffic through dynamic registry paths
-        if (import.meta.env.DEV) {
-          const endpoints = taxonomyStore.endpoints || {};
-          const targetDomain = endpoints.DEV_TARGET_AMI?.replace('https://', '').replace('http://', '').split(':')[0];
-
-          if (host.includes(targetDomain) || host.includes('192.168.10.3')) {
-            if (host.includes(':8384/ami/sync')) targetHost = endpoints.AMI_WS_PATH || '/ami/sync';
-            if (host.includes(':8384/ati/sync')) targetHost = endpoints.ATI_WS_PATH || '/ati/sync';
-          }
-        }
-
-        if (targetHost.startsWith('/')) {
-          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          return `${protocol}//${window.location.host}${targetHost}`;
-        }
-        return targetHost
-      }
-      const AMI_HOST = taxonomyStore.endpoints?.AMI_HOST || import.meta.env.VITE_AMI_WS_URL || 'wss://demo-openchs.bitz-itc.com:8384/ami/sync'
-      const resolvedHost = getWsHost(AMI_HOST)
-      const WSHOST = `${resolvedHost}${resolvedHost.includes('?') ? '&' : '?'}c=-2`
+      const realtimeStore = useRealtimeStore()
 
       // Provide theme to all child components
       provide('isDarkMode', isDarkMode)
       provide('toggleTheme', toggleTheme)
-
-      const res = useWebSocketConnection(WSHOST)
-      const {
-        channels,
-        wsReady,
-        lastUpdate,
-        connect,
-        disconnect
-      } = res
 
       // Use API data composable
       const {
@@ -114,7 +76,7 @@
       const casesTiles = computed(() => {
         const stats = apiData.value?.stats || {}
 
-        const tiles = [
+        return [
           {
             id: 'ct1',
             label: "Today's Answered",
@@ -158,33 +120,22 @@
             icon: 'database'
           }
         ]
-
-        return tiles
       })
 
       // Separate counsellors and callers based on CHAN_CONTEXT
       const counsellorsWithQueueData = computed(() => {
-        // 1. Combine Logged-in Agents from both 'live' and 'users' API collections
         const { live, users, live_k, users_k } = wallboardData.value
 
         const processApiList = (list, k, source) => {
           if (!list || list.length === 0) return []
 
-          // Extension is usually at index 7 based on legacy keys, or found by name
-          // Fallback to commonly observed indices if keys are missing
           const extIdx = k.exten?.[0] ?? k.extension?.[0] ?? 0
           const nameIdx = k.contact_fullname?.[0] ?? k.name?.[0] ?? 1
 
           return list.map(row => {
             const extension = String(row[extIdx] || '')
             const name = row[nameIdx] || 'Unknown'
-
-            return {
-              extension,
-              name,
-              isAvailable: true,
-              source
-            }
+            return { extension, name, isAvailable: true, source }
           }).filter(a => a.extension && a.extension !== 'undefined' && a.extension !== 'null')
         }
 
@@ -193,17 +144,12 @@
           ...processApiList(users, users_k, 'users')
         ]
 
-        // 2. Identify active channels from WebSocket for counsellors
-        const activeChannels = channels.value.filter(ch => {
-          const context = (ch.CHAN_CONTEXT || '').toLowerCase()
-          return context.includes('agent') || context.includes('counselor') || context.includes('login') || context.includes('internal')
-        })
+        // Use global store's agent channels instead of private WS
+        const activeChannels = realtimeStore.agentChannels
 
-        // 3. Merge: Start with API list, then add WS agents (deduplicate by extension)
         const mergedMap = new Map()
 
         apiAgents.forEach(a => {
-          // Normalize extension
           const key = String(a.extension)
           if (!mergedMap.has(key)) {
             mergedMap.set(key, { ...a, isOnline: true })
@@ -229,7 +175,7 @@
           }
         })
 
-        const finalRows = Array.from(mergedMap.values()).map(agent => {
+        return Array.from(mergedMap.values()).map(agent => {
           const ch = agent.channelData
           const stats = counsellorStats.value[agent.extension] || { answered: '--', missed: '--', talkTime: '--' }
 
@@ -247,38 +193,25 @@
             channelData: ch
           }
         })
-
-        if (finalRows.length > 0) {
-          // console.info('[Wallboard] Final Merged List Count:', finalRows.length)
-        }
-
-        return finalRows
       })
 
-      // Callers data - filtered by contexts that represent external calls
+      // Callers data - use global store's caller channels
       const callersData = computed(() => {
-        return channels.value
-          .filter(ch => {
-            const context = (ch.CHAN_CONTEXT || '').toLowerCase()
-            return context.includes('trunk') || context.includes('callcenter') || context.includes('external') || context.includes('default')
-          })
-          .map((ch) => {
-            return {
-              id: ch.CHAN_UNIQUEID || ch._uid,
-              callerNumber: ch.CHAN_CALLERID_NUM || '--',
-              vector: ch.CHAN_VECTOR || '--',
-              waitTime: formatDuration(ch.CHAN_TS),
-              queueStatus: getStatusText(ch),
-              bridgeId: ch.CHAN_BRIDGE_ID || '--',
-              campaign: ch.CHAN_CAMPAIGN_ID || '--',
-              sipCallId: ch.CHAN_SIPCALLID || '--',
-              isOnline: true,
-              channelData: ch
-            }
-          })
+        return realtimeStore.callerChannels.map((ch) => ({
+          id: ch.CHAN_UNIQUEID || ch._uid,
+          callerNumber: ch.CHAN_CALLERID_NUM || '--',
+          vector: ch.CHAN_VECTOR || '--',
+          waitTime: formatDuration(ch.CHAN_TS),
+          queueStatus: getStatusText(ch),
+          bridgeId: ch.CHAN_BRIDGE_ID || '--',
+          campaign: ch.CHAN_CAMPAIGN_ID || '--',
+          sipCallId: ch.CHAN_SIPCALLID || '--',
+          isOnline: true,
+          channelData: ch
+        }))
       })
 
-      // Count of online counsellors and callers
+      // Counts
       const onlineCounsellorsCount = computed(() =>
         counsellorsWithQueueData.value.filter(c => c.isOnline).length
       )
@@ -287,66 +220,60 @@
         callersData.value.filter(c => c.isOnline).length
       )
 
-      // Connection status helpers
+      // Connection status from global store
       const connectionClass = computed(() =>
-        wsReady.value === 'open' ? 'on' : (wsReady.value === 'connecting' ? 'connecting' : 'off')
+        realtimeStore.isAmiConnected ? 'on' : (realtimeStore.amiReady === 'connecting' ? 'connecting' : 'off')
       )
 
       const connectionLabel = computed(() => {
-        if (wsReady.value === 'connecting') return 'Connecting...'
-        if (wsReady.value === 'open') return 'Connected'
-        if (wsReady.value === 'error') return 'Error'
+        if (realtimeStore.amiReady === 'connecting') return 'Connecting...'
+        if (realtimeStore.isAmiConnected) return 'Connected'
+        if (realtimeStore.amiReady === 'error') return 'Error'
         return 'Disconnected'
       })
 
+      const lastUpdate = computed(() => realtimeStore.lastAmiUpdate)
+
+      // Trigger counsellor name/stats fetches when agent channels change
+      watch(
+        () => realtimeStore.agentChannels,
+        (agents) => {
+          agents.forEach(ch => {
+            const ext = ch.CHAN_EXTEN
+            if (ext && ext !== '--') {
+              fetchCounsellorName(ext)
+              fetchCounsellorStats(ext)
+            }
+          })
+        }
+      )
+
       // Lifecycle
       onMounted(() => {
-        // Connect to WebSocket
-        connect(channels, fetchCounsellorName, fetchCounsellorStats)
-
-        // Fetch initial data
         fetchCasesData()
         fetchLiveAgents()
 
-        // Refresh data periodically
         const dataInterval = setInterval(() => {
           fetchCasesData()
           fetchLiveAgents()
-        }, 30000) // Lowered to 30s for better live feel
+        }, 30000)
 
         onBeforeUnmount(() => {
           clearInterval(dataInterval)
-          disconnect()
         })
       })
 
-      // Watch for data changes
-      watch(() => apiData.value, (newVal) => {
-        // console.log('apiData changed:', newVal)
-      })
-
-      watch(() => channels.value, (newVal) => {
-        // Channels updated
-      })
-
       return {
-        // State
         isDarkMode,
-
-        // Data
         casesTiles,
         counsellorsWithQueueData,
         onlineCounsellorsCount,
         callersData,
         onlineCallersCount,
-
-        // Connection status
         connectionClass,
         connectionLabel,
         lastUpdate,
-
-        // Methods
-        toggleTheme // ✅ Now uses shared toggleTheme
+        toggleTheme
       }
     }
   }
