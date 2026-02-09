@@ -14,6 +14,12 @@ RUN npm ci --prefer-offline --no-audit || \
 # Copy project files
 COPY . .
 
+# Build-time env vars (Vite inlines these at build time)
+ARG VITE_DEFAULT_COUNTRY=KE_LOCAL
+ARG VITE_SIP_PASS_PREFIX
+ENV VITE_DEFAULT_COUNTRY=$VITE_DEFAULT_COUNTRY
+ENV VITE_SIP_PASS_PREFIX=$VITE_SIP_PASS_PREFIX
+
 # Build the application
 RUN npm run build
 

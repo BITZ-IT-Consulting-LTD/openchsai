@@ -52,6 +52,17 @@ export const useRealtimeStore = defineStore('realtime', {
       return Object.values(state.atiInteractions).filter(i => {
         return Number(i.ATI_STATE_QUEUE) > 0 && !Number(i.ATI_STATE_CONNECT)
       }).length
+    },
+
+    // Check if a given extension appears in any AMI channel (queued/active agent)
+    isExtensionInQueue: (state) => (extension) => {
+      if (!extension) return false
+      const ext = String(extension)
+      return Object.values(state.amiChannels).some(ch => {
+        const chan = ch.CHAN_CHAN || ''
+        const exten = ch.CHAN_EXTEN || ''
+        return chan.includes(`/${ext}-`) || chan.endsWith(`/${ext}`) || exten === ext
+      })
     }
   },
 
@@ -223,8 +234,9 @@ export const useRealtimeStore = defineStore('realtime', {
       if (this._amiWs && this.amiReady === 'open') return
 
       const taxonomyStore = useTaxonomyStore()
-      const AMI_HOST = taxonomyStore.endpoints?.AMI_HOST || import.meta.env.VITE_AMI_WS_URL || 'wss://demo-openchs.bitz-itc.com:8384/ami/sync'
-      const resolved = this.resolveWsHost(AMI_HOST)
+      // Use proxy path so requests go through Vite (dev) or nginx (prod)
+      const amiPath = taxonomyStore.endpoints?.AMI_WS_PATH || '/ami/sync'
+      const resolved = this.resolveWsHost(amiPath)
       const url = `${resolved}${resolved.includes('?') ? '&' : '?'}c=-2`
 
       console.log('[Realtime] Connecting AMI:', url)
@@ -267,15 +279,10 @@ export const useRealtimeStore = defineStore('realtime', {
       if (this._atiPollTimer && this.atiReady === 'open') return
 
       const taxonomyStore = useTaxonomyStore()
-      const ATI_HOST = taxonomyStore.endpoints?.ATI_HOST || import.meta.env.VITE_ATI_WS_URL || 'wss://demo-openchs.bitz-itc.com:8384/ati/sync'
 
-      // Build HTTP URL: use proxy path in dev, convert wss:// to https:// in prod
-      let baseUrl
-      if (import.meta.env.DEV) {
-        baseUrl = taxonomyStore.endpoints?.ATI_WS_PATH || '/ati/sync'
-      } else {
-        baseUrl = ATI_HOST.replace('wss://', 'https://').replace('ws://', 'http://')
-      }
+      // Build HTTP URL: use proxy path so requests go through Vite (dev) or nginx (prod)
+      // instead of hitting backend IPs directly (which causes CORS failures)
+      const baseUrl = taxonomyStore.endpoints?.ATI_WS_PATH || '/ati/sync'
       this._atiUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}c=-1`
 
       console.log('[Realtime] Starting ATI poll:', this._atiUrl)

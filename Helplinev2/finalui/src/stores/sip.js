@@ -245,11 +245,10 @@ export const useSipStore = defineStore('sip', () => {
 
     function handleIncomingCall(invitation) {
         invitation.stateChange.addListener((state) => {
-            // console.error('[SIP Store] Session state changed:', state)
             if (state === SIP.SessionState.Established) {
                 activeCallStore.callEstablished()
             } else if (state === SIP.SessionState.Terminated) {
-                activeCallStore.resetCall()
+                activeCallStore.onCallTerminated()
             }
         })
 
@@ -283,11 +282,10 @@ export const useSipStore = defineStore('sip', () => {
 
             // Listen for state changes
             inviter.stateChange.addListener((state) => {
-                // console.log('[SIP Store] Outbound session state:', state)
                 if (state === SIP.SessionState.Established) {
                     activeCallStore.callEstablished()
                 } else if (state === SIP.SessionState.Terminated) {
-                    activeCallStore.resetCall()
+                    activeCallStore.onCallTerminated()
                 }
             })
 

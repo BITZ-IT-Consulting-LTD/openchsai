@@ -33,6 +33,10 @@ axiosInstance.interceptors.response.use(
             localStorage.removeItem('user-role');
             localStorage.removeItem('user-profile');
 
+            // Clear session cookie and axios header
+            document.cookie = 'HELPLINE_SESSION_ID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            delete axiosInstance.defaults.headers.common['Session-Id'];
+
             // Only redirect if not already on login page to avoid loops
             if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/login';
