@@ -45,7 +45,7 @@ export function getActiveVoipConfig() {
     SIP_WS_URL: wsUrl,
     SIP_USER_PREFIX: voip.SIP_USER_PREFIX || '',
     SIP_PASS_PREFIX: voip.SIP_PASS_PREFIX || '',
-    SIP_PASSWORD: import.meta.env.VITE_VA_SIP_PASS_PREFIX || '23kdefrtgos09812100',
+    SIP_PASSWORD: import.meta.env.VITE_SIP_PASS_PREFIX || import.meta.env.VITE_VA_SIP_PASS_PREFIX || '',
     SIP_CALL_TIMEOUT: parseInt(import.meta.env.VITE_SIP_CALL_TIMEOUT || '30000', 10),
     AMI_WS_URL: endpoints.AMI_HOST || import.meta.env.VITE_AMI_WS_URL || `wss://${host}:8384/ami/sync`,
     ICE_SERVERS: voip.ICE_SERVERS || [

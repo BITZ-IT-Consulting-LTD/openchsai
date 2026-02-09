@@ -11,29 +11,29 @@ export const ENVIRONMENT_REGISTRY = {
         COUNTRY_CODE: "255",
         ENDPOINTS: {
             API_BASE: "/api-proxy",
-            BACKEND_URL: "https://helpline.sematanzania.org",
+            BACKEND_URL: "https://192.168.10.3",
             BACKEND_PATH: "/hh19jan2026",
-            GATEWAY_AUTH: "https://helpline.sematanzania.org/v1/token/",
-            GATEWAY_SEND_MSG: "https://helpline.sematanzania.org/v1/chat/",
-            AMI_HOST: "wss://helpline.sematanzania.org:8384/ami/sync",
-            ATI_HOST: "wss://helpline.sematanzania.org:8384/ati/sync",
+            GATEWAY_AUTH: "https://192.168.10.3/v1/token/",
+            GATEWAY_SEND_MSG: "https://192.168.10.3/v1/chat/",
+            AMI_HOST: "wss://192.168.10.3:8384/ami/sync",
+            ATI_HOST: "wss://192.168.10.3:8384/ati/sync",
             // Dev Proxy Targets (used by vite.config.js and smart proxy logic)
-            DEV_TARGET_API: "https://helpline.sematanzania.org",
-            DEV_TARGET_AMI: "https://helpline.sematanzania.org:8384",
-            DEV_TARGET_ATI: "https://helpline.sematanzania.org:8384",
-            DEV_TARGET_SIP: "https://helpline.sematanzania.org:8089",
+            DEV_TARGET_API: "https://192.168.10.3",
+            DEV_TARGET_AMI: "https://192.168.10.3:8384",
+            DEV_TARGET_ATI: "https://192.168.10.3:8384",
+            DEV_TARGET_SIP: "https://192.168.10.3:8089",
             SIP_WS_PATH: "/ws/",
             AMI_WS_PATH: "/ami/sync",
             ATI_WS_PATH: "/ati/sync"
         },
         VOIP: {
-            SIP_HOST: "helpline.sematanzania.org",
-            SIP_WS_URL: "wss://helpline.sematanzania.org:8089/ws",
+            SIP_HOST: "192.168.10.3",
+            SIP_WS_URL: "wss://192.168.10.3:8089/ws",
             SIP_USER_PREFIX: "0",
             SIP_PASS_PREFIX: "0",
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:helpline.sematanzania.org:3479' }
+                { urls: 'stun:192.168.10.3:3479' }
             ]
         },
         ROOTS: {
@@ -103,7 +103,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_HOST: "192.168.8.13",
             SIP_WS_URL: "wss://192.168.8.13/ws/",
             SIP_USER_PREFIX: "",
-            SIP_PASS_PREFIX: "23kdefrtgos09812100",
+            SIP_PASS_PREFIX: import.meta.env.VITE_SIP_PASS_PREFIX || '',
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' }
             ]
@@ -175,7 +175,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_HOST: "192.168.10.119",
             SIP_WS_URL: "wss://192.168.10.119/ws/",
             SIP_USER_PREFIX: "",
-            SIP_PASS_PREFIX: "23kdefrtgos09812100",
+            SIP_PASS_PREFIX: import.meta.env.VITE_SIP_PASS_PREFIX || '',
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' }
             ]
@@ -247,7 +247,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_HOST: "demo-openchs.bitz-itc.com",
             SIP_WS_URL: "wss://demo-openchs.bitz-itc.com/ws/",
             SIP_USER_PREFIX: "",
-            SIP_PASS_PREFIX: "23kdefrtgos09812100",
+            SIP_PASS_PREFIX: import.meta.env.VITE_SIP_PASS_PREFIX || '',
             ICE_SERVERS: [
                 { urls: 'stun:stun.l.google.com:19302' }
             ]
