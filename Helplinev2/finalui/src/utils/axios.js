@@ -34,7 +34,7 @@ axiosInstance.interceptors.response.use(
             localStorage.removeItem('user-profile');
 
             // Only redirect if not already on login page to avoid loops
-            if (!window.location.pathname.startsWith('/login')) {
+            if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/login';
             }
         }

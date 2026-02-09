@@ -391,15 +391,12 @@
   // const webRtc = useWebRtcClient() // Legacy, removal candidates if unused
 
   onMounted(async () => {
-    // await webRtc.init() // Let SIP store handle this
-    // Queue status is persisted in activeCallStore, no need for checkQueueStatus()
     window.addEventListener('click', handleClickOutside)
+    if (!authStore.isAuthenticated) return
     try {
-      // Fetch notifications for the badge and dropdown
       await notificationsStore.fetchNotifications({ _c: 10 })
-
-      // Fetch detailed activities for the dropdown view (top 10)
       await activitiesStore.listActivities({ _c: 10 })
+      notificationsStore.startPolling()
     } catch (e) {
       console.error('Failed to load navbar data:', e)
     }
@@ -407,6 +404,7 @@
 
   onUnmounted(() => {
     window.removeEventListener('click', handleClickOutside)
+    notificationsStore.stopPolling()
   })
 
   // ... (Other state) ...

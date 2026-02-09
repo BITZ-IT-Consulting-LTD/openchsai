@@ -78,6 +78,150 @@ export const ENVIRONMENT_REGISTRY = {
         }
     },
 
+    // --- KENYA LOCAL / LAN CONFIG (192.168.8.13) ---
+    'KE_LOCAL': {
+        COUNTRY_NAME: "Kenya Local",
+        COUNTRY_CODE: "254",
+        ENDPOINTS: {
+            API_BASE: "/api-proxy",
+            BACKEND_URL: "https://192.168.8.13",
+            BACKEND_PATH: "/helpline",
+            GATEWAY_AUTH: "https://demo-openchs.bitz-itc.com/api/token/",
+            GATEWAY_SEND_MSG: "https://backend.bitz-itc.com/api/whatsapp/whatsapp/send/",
+            AMI_HOST: "wss://192.168.8.13:8384/ami/sync",
+            ATI_HOST: "wss://192.168.8.13:8384/ati/sync",
+            // Dev Proxy Targets
+            DEV_TARGET_API: "https://192.168.8.13",
+            DEV_TARGET_AMI: "https://192.168.8.13:8384",
+            DEV_TARGET_ATI: "https://192.168.8.13:8384",
+            DEV_TARGET_SIP: "https://192.168.8.13:8089",
+            SIP_WS_PATH: "/ws/",
+            AMI_WS_PATH: "/ami/sync",
+            ATI_WS_PATH: "/ati/sync"
+        },
+        VOIP: {
+            SIP_HOST: "192.168.8.13",
+            SIP_WS_URL: "wss://192.168.8.13/ws/",
+            SIP_USER_PREFIX: "",
+            SIP_PASS_PREFIX: "23kdefrtgos09812100",
+            ICE_SERVERS: [
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
+        },
+        ROOTS: {
+            CASE_CATEGORY: "362557",
+            GENERAL_ASSESSMENT: "236694",
+            JUSTICE_SYSTEM_STATE: "236687",
+            REFERRAL_TYPE: "236707",
+            SERVICE_OFFERED: "113",
+            KNOW_ABOUT_116: "236700",
+            AGE_GROUP: "101",
+            GENDER: "120",
+            LOCATION: "88",
+            NATIONALITY: "126",
+            ID_TYPE: "362409",
+            LANGUAGE: "123",
+            TRIBE: "133",
+            RELATIONSHIP: "236634",
+            DISABILITY: "236669",
+            NOT_IN_SCHOOL: "362466",
+            SHARES_HOME: "236631",
+            OCCUPATION: "236648",
+            HEALTH_STATUS: "236660",
+            SCHOOL_TYPE: "236711",
+            SCHOOL_LEVEL: "236712",
+            HIV_STATUS: "105",
+            MARITAL_STATUS: "236654",
+            HOUSEHOLD_TYPE: "236674",
+            DISPOSITION: "362515",
+            GBV_RELATED: "118",
+        },
+        TRIGGERS: {
+            SEXUAL_ABUSE: "362271",
+            SERVICE_POLICE: "362036",
+            SERVICE_OTHER: "362042",
+            REFERRAL_OTHER: "362009",
+            SERVICE_REFERAL: "117",
+        },
+        DISPOSITIONS: {
+            NEW_CASE: "363037",
+            FOLLOW_UP: "362556",
+            COMPLETE: "362527",
+        }
+    },
+
+    // --- KENYA VPN CONFIG (192.168.10.119 → same backend as KE_LOCAL) ---
+    'KE_VPN': {
+        COUNTRY_NAME: "Kenya VPN",
+        COUNTRY_CODE: "254",
+        ENDPOINTS: {
+            API_BASE: "/api-proxy",
+            BACKEND_URL: "https://192.168.10.119",
+            BACKEND_PATH: "/helpline",
+            GATEWAY_AUTH: "https://demo-openchs.bitz-itc.com/api/token/",
+            GATEWAY_SEND_MSG: "https://backend.bitz-itc.com/api/whatsapp/whatsapp/send/",
+            AMI_HOST: "wss://192.168.10.119:8384/ami/sync",
+            ATI_HOST: "wss://192.168.10.119:8384/ati/sync",
+            // Dev Proxy Targets
+            DEV_TARGET_API: "https://192.168.10.119",
+            DEV_TARGET_AMI: "https://192.168.10.119:8384",
+            DEV_TARGET_ATI: "https://192.168.10.119:8384",
+            DEV_TARGET_SIP: "https://192.168.10.119:8089",
+            SIP_WS_PATH: "/ws/",
+            AMI_WS_PATH: "/ami/sync",
+            ATI_WS_PATH: "/ati/sync"
+        },
+        VOIP: {
+            SIP_HOST: "192.168.10.119",
+            SIP_WS_URL: "wss://192.168.10.119/ws/",
+            SIP_USER_PREFIX: "",
+            SIP_PASS_PREFIX: "23kdefrtgos09812100",
+            ICE_SERVERS: [
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
+        },
+        ROOTS: {
+            CASE_CATEGORY: "362557",
+            GENERAL_ASSESSMENT: "236694",
+            JUSTICE_SYSTEM_STATE: "236687",
+            REFERRAL_TYPE: "236707",
+            SERVICE_OFFERED: "113",
+            KNOW_ABOUT_116: "236700",
+            AGE_GROUP: "101",
+            GENDER: "120",
+            LOCATION: "88",
+            NATIONALITY: "126",
+            ID_TYPE: "362409",
+            LANGUAGE: "123",
+            TRIBE: "133",
+            RELATIONSHIP: "236634",
+            DISABILITY: "236669",
+            NOT_IN_SCHOOL: "362466",
+            SHARES_HOME: "236631",
+            OCCUPATION: "236648",
+            HEALTH_STATUS: "236660",
+            SCHOOL_TYPE: "236711",
+            SCHOOL_LEVEL: "236712",
+            HIV_STATUS: "105",
+            MARITAL_STATUS: "236654",
+            HOUSEHOLD_TYPE: "236674",
+            DISPOSITION: "362515",
+            GBV_RELATED: "118",
+        },
+        TRIGGERS: {
+            SEXUAL_ABUSE: "362271",
+            SERVICE_POLICE: "362036",
+            SERVICE_OTHER: "362042",
+            REFERRAL_OTHER: "362009",
+            SERVICE_REFERAL: "117",
+        },
+        DISPOSITIONS: {
+            NEW_CASE: "363037",
+            FOLLOW_UP: "362556",
+            COMPLETE: "362527",
+        }
+    },
+
     // --- DEMO / KENYA CLOUD CONFIG ---
     'DEMO': {
         COUNTRY_NAME: "Kenya Cloud",

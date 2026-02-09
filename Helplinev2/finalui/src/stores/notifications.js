@@ -10,6 +10,7 @@ export const useNotificationsStore = defineStore('notificationsStore', {
     notifications_ctx: [],  // context (pagination etc.)
     loading: false,
     error: null,
+    lastFetchedAt: 0,       // timestamp of last successful fetch (cooldown guard)
     // Pagination state
     pagination: {
       offset: 0,
@@ -60,6 +61,18 @@ export const useNotificationsStore = defineStore('notificationsStore', {
         obj[fieldName] = notificationArray[index] || ''
       }
       return obj
+    },
+
+    // Get all notifications as objects (used by Navbar template)
+    notificationsAsObjects: (state) => {
+      return state.notifications.map(notificationArray => {
+        const obj = {}
+        for (const [fieldName, fieldInfo] of Object.entries(state.notifications_k)) {
+          const index = fieldInfo[0]
+          obj[fieldName] = notificationArray[index] || ''
+        }
+        return obj
+      })
     }
   },
 
@@ -86,7 +99,16 @@ export const useNotificationsStore = defineStore('notificationsStore', {
     },
 
     // Fetch notifications from the activities API endpoint
+    // Includes a 10-second cooldown to prevent spam from HMR re-mounts
     async fetchNotifications(params = {}) {
+      const now = Date.now()
+      const COOLDOWN_MS = 10_000 // 10 seconds between fetches
+      if (this.lastFetchedAt && (now - this.lastFetchedAt) < COOLDOWN_MS) {
+        console.log('[Notifications] Skipping fetch — cooldown active (' +
+          Math.round((COOLDOWN_MS - (now - this.lastFetchedAt)) / 1000) + 's remaining)')
+        return { notifications: this.notifications, total: this.pagination.totalRecords, unread: this.unreadCount }
+      }
+
       this.loading = true
       this.error = null
 
@@ -106,10 +128,7 @@ export const useNotificationsStore = defineStore('notificationsStore', {
           headers: this.getAuthHeaders()
         })
 
-        console.log('📬 Notifications API Response:', {
-          activities: data.activities?.length,
-          activities_ctx: data.activities_ctx
-        })
+        console.log('[Notifications] Fetched:', data.activities?.length, 'items')
 
         // Extract notification data from the activities API response
         this.notifications = data.activities || []
@@ -118,6 +137,7 @@ export const useNotificationsStore = defineStore('notificationsStore', {
 
         // Parse pagination context
         this.parsePaginationContext(data.activities_ctx)
+        this.lastFetchedAt = Date.now()
 
         return {
           notifications: this.notifications,
@@ -126,10 +146,29 @@ export const useNotificationsStore = defineStore('notificationsStore', {
         }
       } catch (err) {
         this.error = err.message || 'Failed to fetch notifications'
-        console.error('❌ Failed to fetch notifications:', err)
+        console.error('[Notifications] Fetch failed:', err)
         throw err
       } finally {
         this.loading = false
+      }
+    },
+
+    // Start background polling (60s interval). Call from Navbar onMounted.
+    startPolling() {
+      if (this._pollTimer) return // Already polling
+      console.log('[Notifications] Starting poll (every 60s)')
+      this._pollTimer = setInterval(() => {
+        this.lastFetchedAt = 0 // Reset cooldown so the poll goes through
+        this.fetchNotifications({ _c: 10 }).catch(() => {})
+      }, 60_000)
+    },
+
+    // Stop background polling. Call from Navbar onUnmounted.
+    stopPolling() {
+      if (this._pollTimer) {
+        console.log('[Notifications] Stopping poll')
+        clearInterval(this._pollTimer)
+        this._pollTimer = null
       }
     },
 
@@ -177,7 +216,8 @@ export const useNotificationsStore = defineStore('notificationsStore', {
         // Mark each as read (could be optimized with a batch endpoint if available)
         await Promise.all(unreadIds.map(id => this.markAsRead(id)))
 
-        // Refresh notifications
+        // Refresh notifications (bypass cooldown — user action)
+        this.lastFetchedAt = 0
         await this.fetchNotifications()
       } catch (err) {
         console.error('❌ Failed to mark all as read:', err)
@@ -185,28 +225,32 @@ export const useNotificationsStore = defineStore('notificationsStore', {
       }
     },
 
-    // Go to next page
+    // Go to next page (user action — bypass cooldown)
     async nextPage(filters = {}) {
       if (!this.hasNextPage) return
+      this.lastFetchedAt = 0
       const newOffset = this.pagination.offset + this.pagination.limit
       await this.fetchNotifications({ ...filters, _o: newOffset, _c: this.pagination.limit })
     },
 
-    // Go to previous page
+    // Go to previous page (user action — bypass cooldown)
     async prevPage(filters = {}) {
       if (!this.hasPrevPage) return
+      this.lastFetchedAt = 0
       const newOffset = Math.max(0, this.pagination.offset - this.pagination.limit)
       await this.fetchNotifications({ ...filters, _o: newOffset, _c: this.pagination.limit })
     },
 
-    // Go to specific page
+    // Go to specific page (user action — bypass cooldown)
     async goToPage(page, filters = {}) {
+      this.lastFetchedAt = 0
       const newOffset = (page - 1) * this.pagination.limit
       await this.fetchNotifications({ ...filters, _o: newOffset, _c: this.pagination.limit })
     },
 
-    // Change page size
+    // Change page size (user action — bypass cooldown)
     async setPageSize(size, filters = {}) {
+      this.lastFetchedAt = 0
       this.pagination.limit = size
       this.pagination.offset = 0
       await this.fetchNotifications({ ...filters, _o: 0, _c: size })
@@ -222,11 +266,13 @@ export const useNotificationsStore = defineStore('notificationsStore', {
 
     // Reset store
     resetStore() {
+      this.stopPolling()
       this.notifications = []
       this.notifications_k = {}
       this.notifications_ctx = []
       this.loading = false
       this.error = null
+      this.lastFetchedAt = 0
       this.resetPagination()
     }
   }
