@@ -16,6 +16,7 @@
                         :class="isDarkMode
                             ? 'bg-neutral-900 border-neutral-700 text-gray-200 focus:border-indigo-500/50'
                             : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-indigo-500/50'">
+                        <option value="">All Sources</option>
                         <option value="aii">Legacy (AII)</option>
                         <option value="gateway">Gateway</option>
                     </select>
@@ -97,14 +98,17 @@
 
     const filters = ref({
         q: '',
-        src: 'aii',
+        src: '',
         start_date: '',
         end_date: ''
     })
 
     const emitFilters = () => {
-        const params = {
-            src: filters.value.src || 'aii'
+        const params = {}
+
+        // Only add src filter when explicitly selected
+        if (filters.value.src) {
+            params.src = filters.value.src
         }
 
         // Search Query (Global Search)
@@ -140,7 +144,7 @@
 
     const resetFilters = () => {
         filters.value.q = ''
-        filters.value.src = 'aii'
+        filters.value.src = ''
         filters.value.start_date = ''
         filters.value.end_date = ''
         emitFilters()

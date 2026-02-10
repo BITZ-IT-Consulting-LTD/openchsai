@@ -9,7 +9,7 @@
                     :class="isDarkMode ? 'bg-purple-900/30 text-purple-300 border-purple-800' : 'bg-purple-50 text-purple-600 border-purple-100'">
                     Translation
                 </span>
-                <span class="text-xs font-mono opacity-50">{{ formatTime(prediction.created_on) }}</span>
+                <span class="text-xs font-mono" :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">{{ formatTime(prediction.created_on) }}</span>
             </div>
             <div class="text-xs font-semibold" :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">
                 {{ payload.target_language || 'English' }}

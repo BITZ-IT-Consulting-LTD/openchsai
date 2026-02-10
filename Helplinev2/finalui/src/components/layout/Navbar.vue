@@ -16,23 +16,52 @@
         </div>
       </div>
 
-      <!-- Center: Spacer (Search removed/Status moved to Overlay) -->
+      <!-- Center: Agent Status Indicator -->
       <div class="hidden lg:flex items-center justify-center flex-1 mx-8 relative">
-        <!-- Search or other widgets can go here -->
+        <div v-if="authStore.isAuthenticated" class="flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300"
+          :class="statusBarClass">
+          <!-- Status Dot -->
+          <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="statusDotClass"></div>
+
+          <!-- Status Text -->
+          <span class="text-xs font-bold uppercase tracking-wider" :class="statusTextClass">
+            {{ agentStatusText }}
+          </span>
+
+          <!-- Extension -->
+          <span v-if="authStore.user?.extension && queueStatus !== 'offline'"
+            class="text-[10px] font-medium opacity-50 border-l pl-3"
+            :class="isDarkMode ? 'border-white/10' : 'border-gray-200'">
+            Ext {{ authStore.user.extension }}
+          </span>
+
+          <!-- Caller Number (ringing/active/wrapup) -->
+          <span v-if="activeCallStore.callerNumber && ['ringing', 'active', 'calling', 'wrapup'].includes(activeCallStore.callState)"
+            class="text-xs font-bold"
+            :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            {{ activeCallStore.callerNumber }}
+          </span>
+
+          <!-- Duration (on call) -->
+          <span v-if="isCallActive" class="text-xs font-mono font-black tracking-wider text-emerald-500">
+            {{ activeCallStore.formatDuration(activeCallStore.durationSeconds) }}
+          </span>
+
+          <!-- End Wrapup Button -->
+          <button v-if="isWrapup" @click.stop="activeCallStore.endWrapup()"
+            class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-colors"
+            :class="isDarkMode
+              ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+              : 'bg-orange-100 text-orange-600 hover:bg-orange-200'">
+            Clear
+          </button>
+        </div>
       </div>
 
       <!-- Right: Actions & User Profile -->
       <div class="flex items-center gap-1 lg:gap-3 relative nav-actions font-sans">
         <!-- Softphone (Call Actions) -->
         <div class="flex items-center gap-1">
-          <!-- Incoming Simulate Trigger -->
-          <button @click.stop="triggerIncomingCall" class="p-2 rounded-xl transition-all duration-300 relative group"
-            :class="isIncomingCall
-              ? 'text-amber-500 bg-amber-500/10'
-              : (isDarkMode ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900')">
-            <i-mdi-phone-incoming class="w-5 h-5" />
-          </button>
-
           <!-- Dialer Toggle -->
           <div class="relative">
             <button @click.stop="toggleDropdown('softphone')"
@@ -90,7 +119,13 @@
               ? (isDarkMode ? 'text-white' : 'text-gray-900')
               : (isDarkMode ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900')">
             <i-mdi-bell class="w-5 h-5" />
-            <NotificationBadge :count="notificationsStore.totalCount" />
+            <span
+              v-if="notificationsStore.unreadCount > 0"
+              class="absolute top-1 right-1 min-w-[17px] h-[17px] px-1 bg-red-600 text-[9px] font-black text-white flex items-center justify-center rounded-full border-2 border-black shadow-xl"
+              style="transform: translate(25%, -25%);"
+            >
+              {{ notificationsStore.unreadCount }}
+            </span>
           </button>
         </div>
 
@@ -252,24 +287,41 @@
               </button>
             </div>
             <div class="max-h-[500px] overflow-y-auto">
-              <!-- Empty State -->
-              <div v-if="notificationsStore.allNotifications.length === 0" class="p-12 text-center opacity-40">
-                <i-mdi-bell-off-outline class="w-12 h-12 mx-auto mb-2" />
-                <p class="text-xs font-bold uppercase tracking-widest">No new notifications</p>
+              <div
+                v-if="notificationsStore.loading"
+                class="px-5 py-8 text-center"
+              >
+                <div class="animate-spin w-8 h-8 mx-auto border-4 border-amber-500 border-t-transparent rounded-full"></div>
+                <p class="mt-2 text-sm text-gray-500">Loading notifications...</p>
               </div>
 
-              <!-- Notifications List -->
-              <div v-for="(notification, index) in notificationsStore.allNotifications"
+              <div
+                v-else-if="notificationsStore.notifications.length === 0"
+                class="px-5 py-8 text-center"
+              >
+                <i-mdi-bell-off class="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                <p class="text-sm text-gray-500">No notifications</p>
+              </div>
+
+              <div
+                v-else
+                v-for="(notification, index) in notificationsStore.notificationsAsObjects"
                 :key="notification.id"
-                class="px-5 py-4 border-b last:border-0 hover:bg-white/5 transition-colors cursor-pointer group"
+                class="px-5 py-4 border-b last:border-0 hover:bg-white/5 transition-colors cursor-pointer"
                 :class="[
                   isDarkMode ? 'border-white/5' : 'border-gray-100',
-                  !notification.read ? (isDarkMode ? 'bg-white/5' : 'bg-amber-50/50') : ''
-                ]" 
-                @click="notificationsStore.markAsRead(notification.id)">
-                
+                  !notification.read_on || notification.read_on === '0' ? (isDarkMode ? 'bg-white/5' : 'bg-amber-50/30') : ''
+                ]"
+                @click="handleNotificationClick(notification)"
+              >
                 <div class="flex justify-between items-start mb-2">
                   <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+                      {{ notification.action_verb || 'Case Update' }}
+                    </span>
+                    <span class="text-[10px] font-medium text-gray-500">
+                      from {{ notification.created_by || 'Unknown' }}
+                    </span>
                     <span class="text-xs font-bold" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                       {{ notification.title || notification.type || 'Notification' }}
                     </span>
@@ -285,13 +337,16 @@
                 </div>
                 
                 <div class="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-gray-500 opacity-80 overflow-x-hidden">
-                   <span v-if="notification.case_id">#{{ notification.case_id }}</span>
-                   <i-mdi-chevron-right v-if="notification.case_id" class="w-3 h-3 opacity-50" />
-                   <span class="truncate">{{ notification.message || notification.narrative || 'New update received' }}</span>
+                  <span v-if="notification.case_id">#{{ notification.case_id }}</span>
+                  <template v-if="notification.case_details">
+                    <i-mdi-chevron-right class="w-3 h-3 opacity-50" />
+                    <span class="truncate">{{ notification.case_details }}</span>
+                  </template>
                 </div>
-
-                <span v-if="!notification.read"
-                  class="px-2 py-0.5 bg-red-600 text-[9px] font-black text-white rounded uppercase tracking-widest inline-block shadow-sm">
+                <span
+                  v-if="!notification.read_on || notification.read_on === '0'"
+                  class="px-2 py-0.5 bg-red-600 text-[9px] font-black text-white rounded uppercase tracking-widest inline-block"
+                >
                   unread
                 </span>
               </div>
@@ -299,7 +354,23 @@
             
             <div class="p-4 border-t" :class="isDarkMode ? 'border-white/5' : 'border-gray-50'">
               <div class="flex items-center justify-between px-2 text-[11px] font-bold text-gray-500">
-                <span>{{ notificationsStore.allNotifications.length }} total</span>
+                <span>{{ notificationsStore.paginationInfo.rangeStart }} - {{ notificationsStore.paginationInfo.rangeEnd }} of {{ notificationsStore.paginationInfo.total }}</span>
+                <div class="flex gap-4">
+                  <button
+                    @click="handleNotificationPrevPage"
+                    :disabled="!notificationsStore.hasPrevPage"
+                    :class="notificationsStore.hasPrevPage ? 'hover:text-amber-500 transition-colors' : 'opacity-30 cursor-not-allowed'"
+                  >
+                    <i-mdi-chevron-left class="w-5 h-5" />
+                  </button>
+                  <button
+                    @click="handleNotificationNextPage"
+                    :disabled="!notificationsStore.hasNextPage"
+                    :class="notificationsStore.hasNextPage ? 'hover:text-amber-500 transition-colors' : 'opacity-30 cursor-not-allowed'"
+                  >
+                    <i-mdi-chevron-right class="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -313,7 +384,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onUnmounted, markRaw, watch } from 'vue'
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useSearchStore } from '@/stores/search'
@@ -321,12 +392,9 @@
   import { useActivitiesStore } from '@/stores/activities'
   import { useActiveCallStore } from '@/stores/activeCall'
   import { useSipStore } from '@/stores/sip'
-  import { useWebRtcClient } from '@/composables/useWebRtcClient'
   import { storeToRefs } from 'pinia'
-  import NotificationBadge from '@/components/base/NotificationBadge.vue'
   import Dialpad from '@/components/softphone/Dialpad.vue'
   import { toast } from 'vue-sonner'
-  import axiosInstance from '@/utils/axios'
 
   // Navbar setup initialized
 
@@ -349,48 +417,86 @@
   // const webRtc = useWebRtcClient() // Legacy, removal candidates if unused
 
   onMounted(async () => {
-    // await webRtc.init() // Let SIP store handle this
-    // Queue status is persisted in activeCallStore, no need for checkQueueStatus()
     window.addEventListener('click', handleClickOutside)
+    if (!authStore.isAuthenticated) return
     try {
-      // Fetch counts for the badge
-      await notificationsStore.fetchCounts()
-      
-      // Start Real-time Polling for ATI notifications
-      await notificationsStore.startPolling()
-
-      // Fetch detailed activities for the dropdown view (top 10)
+      await notificationsStore.fetchNotifications({ _c: 10 })
       await activitiesStore.listActivities({ _c: 10 })
+      notificationsStore.startPolling()
     } catch (e) {
       console.error('Failed to load navbar data:', e)
     }
   })
 
   onUnmounted(() => {
-    notificationsStore.stopPolling()
     window.removeEventListener('click', handleClickOutside)
+    notificationsStore.stopPolling()
   })
 
   // ... (Other state) ...
 
   const dropdown = ref(null)
 
+  // Queue state (reactive ref from store)
+  const { queueStatus } = storeToRefs(activeCallStore)
+
   const isCallActive = computed(() => activeCallStore.callState === 'active')
   const isIncomingCall = computed(() => activeCallStore.callState === 'ringing')
   const isCalling = computed(() => activeCallStore.callState === 'calling')
-  
-  const triggerIncomingCall = () => {
-    activeCallStore.onIncomingCall({
-      id: 'SIMULATED-call-id-123',
-      remoteIdentity: { uri: { user: '+254700000000' } },
-      state: 'Initial',
-      reject: () => { },
-      accept: () => console.log('Simulated Accept')
-    })
-  }
+  const isWrapup = computed(() => activeCallStore.callState === 'wrapup')
 
+  // Agent status indicator computeds
+  const agentStatusText = computed(() => {
+    if (queueStatus.value === 'joining') return 'Connecting...'
+    if (queueStatus.value === 'offline') return 'Offline'
+    switch (activeCallStore.callState) {
+      case 'ringing': return 'Ringing'
+      case 'active': return 'On Call'
+      case 'calling': return 'Dialing'
+      case 'wrapup': return 'Wrapup'
+      default: return 'Available'
+    }
+  })
+
+  const statusDotClass = computed(() => {
+    if (queueStatus.value === 'offline') return 'bg-gray-400'
+    if (queueStatus.value === 'joining') return 'bg-amber-400 animate-pulse'
+    switch (activeCallStore.callState) {
+      case 'ringing': return 'bg-amber-400 animate-pulse'
+      case 'active': return 'bg-emerald-500 animate-pulse'
+      case 'calling': return 'bg-blue-400 animate-pulse'
+      case 'wrapup': return 'bg-orange-400'
+      default: return 'bg-emerald-500'
+    }
+  })
+
+  const statusTextClass = computed(() => {
+    const dark = props.isDarkMode
+    if (queueStatus.value === 'offline') return 'text-gray-500'
+    if (queueStatus.value === 'joining') return dark ? 'text-amber-400' : 'text-amber-600'
+    switch (activeCallStore.callState) {
+      case 'ringing': return dark ? 'text-amber-400' : 'text-amber-600'
+      case 'active': return dark ? 'text-emerald-400' : 'text-emerald-600'
+      case 'calling': return dark ? 'text-blue-400' : 'text-blue-600'
+      case 'wrapup': return dark ? 'text-orange-400' : 'text-orange-600'
+      default: return dark ? 'text-emerald-400' : 'text-emerald-600'
+    }
+  })
+
+  const statusBarClass = computed(() => {
+    const dark = props.isDarkMode
+    if (queueStatus.value === 'offline') return dark ? 'bg-white/5' : 'bg-gray-50'
+    if (queueStatus.value === 'joining') return dark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'
+    switch (activeCallStore.callState) {
+      case 'ringing': return dark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'
+      case 'active': return dark ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-emerald-50 border border-emerald-200'
+      case 'calling': return dark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
+      case 'wrapup': return dark ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50 border border-orange-200'
+      default: return dark ? 'bg-white/5' : 'bg-gray-50'
+    }
+  })
+  
     // Queue handling – use activeCallStore persistence
-    const { queueStatus } = storeToRefs(activeCallStore)
     const isQueueActionLoading = ref(false)
 
     const handleQueueAction = async () => {
@@ -504,6 +610,39 @@
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
     return `${Math.floor(seconds / 86400)}d ago`
+  }
+
+  // Notification handlers
+  const handleNotificationClick = async (notification) => {
+    try {
+      // Mark as read
+      if (notification.id) {
+        await notificationsStore.markAsRead(notification.id)
+      }
+      // Navigate to case if case_id exists
+      if (notification.case_id) {
+        router.push(`/cases/${notification.case_id}`)
+        dropdown.value = null
+      }
+    } catch (e) {
+      console.error('Failed to handle notification click:', e)
+    }
+  }
+
+  const handleNotificationPrevPage = async () => {
+    try {
+      await notificationsStore.prevPage()
+    } catch (e) {
+      console.error('Failed to load previous notifications:', e)
+    }
+  }
+
+  const handleNotificationNextPage = async () => {
+    try {
+      await notificationsStore.nextPage()
+    } catch (e) {
+      console.error('Failed to load next notifications:', e)
+    }
   }
 
   const handleLogout = async () => {

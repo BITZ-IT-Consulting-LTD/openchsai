@@ -173,9 +173,13 @@
     try {
       console.log('BaseOptions: Loading options for categoryId:', props.categoryId);
 
-      await store.viewCategory(props.categoryId);
+      const data = await store.viewCategory(props.categoryId);
 
-      const k = store.subcategories_k;
+      if (!data) {
+        throw new Error('No data returned for this category');
+      }
+
+      const k = data.keys;
       if (!k) {
         throw new Error('No subcategories mapping found for this category');
       }
@@ -185,7 +189,7 @@
 
       console.log('BaseOptions: Field indices - id:', idIdx, 'name:', nameIdx);
 
-      const parsedOptions = (store.subcategories || []).map(row => {
+      const parsedOptions = (data.items || []).map(row => {
         if (!Array.isArray(row)) {
           console.warn('BaseOptions: Invalid row format:', row);
           return null;

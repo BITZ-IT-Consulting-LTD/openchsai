@@ -12,7 +12,7 @@
             <template v-if="activeCallStore.callState === 'ringing'">
                 <div class="flex items-center gap-4 px-4">
                     <span class="text-xs font-bold animate-pulse text-emerald-500">Incoming Call...</span>
-                    <span class="text-sm font-black">{{ activeCallStore.callerNumber }}</span>
+                    <span class="text-sm font-black text-gray-900 dark:text-white">{{ activeCallStore.callerNumber }}</span>
                 </div>
                 <div class="flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-neutral-800">
                     <button @click="activeCallStore.answerCall"
@@ -21,7 +21,7 @@
                         Answer
                     </button>
                     <button @click="activeCallStore.hangupCall"
-                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-600/10 text-red-600 hover:bg-red-600/20 transition-colors">
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-600/10 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-600/20 dark:hover:bg-red-900/40 transition-colors">
                         <i-mdi-phone-hangup class="w-4 h-4" />
                         Reject
                     </button>
@@ -32,7 +32,7 @@
             <template v-else>
                 <!-- Timer Section -->
                 <div class="flex flex-col px-6 border-r border-gray-200 dark:border-neutral-800">
-                    <span class="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">Duration</span>
+                    <span class="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-400">Duration</span>
                     <span class="text-xl font-black font-mono tracking-widest text-emerald-600 dark:text-emerald-500">
                         {{ activeCallStore.formatDuration(activeCallStore.durationSeconds) }}
                     </span>
@@ -42,21 +42,21 @@
                 <div class="flex items-center gap-3 px-4">
                     <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
                     <div class="flex flex-col">
-                        <span class="text-[9px] font-bold uppercase tracking-wider opacity-50">Caller</span>
-                        <span class="text-sm font-bold">{{ activeCallStore.callerNumber }}</span>
+                        <span class="text-[9px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Caller</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">{{ activeCallStore.callerNumber }}</span>
                     </div>
                 </div>
 
                 <!-- Actions -->
                 <div class="flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-neutral-800">
                     <button @click="openCaseForm"
-                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors">
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-600 dark:bg-amber-600 text-white hover:bg-amber-700 dark:hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20">
                         <i-mdi-plus-circle class="w-4 h-4" />
                         Case
                     </button>
 
                     <button @click="isDispositionOpen = true"
-                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500 hover:bg-amber-200 dark:hover:bg-amber-900/40 transition-colors">
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors">
                         <i-mdi-file-document-edit class="w-4 h-4" />
                         Disposition
                     </button>

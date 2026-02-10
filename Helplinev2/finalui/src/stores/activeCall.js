@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import axiosInstance from '@/utils/axios'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 export const useActiveCallStore = defineStore('activeCall', () => {
     // State
@@ -10,10 +10,15 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     const ssid = ref('')
     const src_callid = ref('')
     const src_uid = ref(null) // AMI CHAN_UNIQUEID
+    const bridge_id = ref('') // AMI CHAN_BRIDGE_ID — used for AI insight matching
+    const aiInsights = ref([]) // Decoded AI insight payloads for current call
+    const _seenInsightTypes = new Set() // Dedup tracker (notification_type keys)
     const startedAt = ref(null)
     const durationSeconds = ref(0)
     const hasAudioTrack = ref(false)
     const autoAnswerEnabled = ref(localStorage.getItem('sip_auto_answer') === 'true')
+    const awaitingQueueConfirmation = ref(false)
+    let isQueueConfirmationCall = false
 
     function toggleAutoAnswer() {
         autoAnswerEnabled.value = !autoAnswerEnabled.value
@@ -21,7 +26,7 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     }
 
     let timerInterval = null
-    let pollInterval = null
+    let wrapupTimer = null
     const ringtoneAudio = new Audio('/sounds/ringtone.mp3')
     ringtoneAudio.loop = true
 
@@ -85,16 +90,23 @@ export const useActiveCallStore = defineStore('activeCall', () => {
 
         src_uid.value = null // Will be set later via AMI or header
 
+        // Queue confirmation call: Asterisk sends INVITE after agent joins queue.
+        // Auto-answer this to complete the login, same as the old UI behavior.
+        if (awaitingQueueConfirmation.value) {
+            console.log('[ActiveCall] Queue confirmation call detected — auto-answering in 500ms...')
+            awaitingQueueConfirmation.value = false
+            isQueueConfirmationCall = true
+            setTimeout(() => answerCall(), 500)
+            return // Don't ring for confirmation calls
+        }
+
         playRingtone()
 
-        console.error('[ActiveCall] POPUP STATE SHOULD NOW BE RINGING');
-
-        /* Disable auto-answer during diagnosis to ensure popup remains visible 
+        // Auto-answer if user has enabled the toggle
         if (autoAnswerEnabled.value) {
-            console.log('Auto-Answering enabled, answering in 500ms...')
+            console.log('[ActiveCall] Auto-answer enabled — answering in 500ms...')
             setTimeout(() => answerCall(), 500)
         }
-        */
     }
 
     function startOutboundCall(session) {
@@ -171,10 +183,9 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     function hangupCall() {
         if (!currentSession.value) return
 
-        console.log('Hanging up...')
-        // Check state to decide between reject (if ringing) or bye (if active)
-        // SIP.js session.state might be used, or our local state
+        const wasActive = callState.value === 'active'
 
+        console.log('Hanging up...')
         switch (currentSession.value.state) {
             case 'Initial':
             case 'Establishing':
@@ -185,26 +196,80 @@ export const useActiveCallStore = defineStore('activeCall', () => {
                 if (currentSession.value.bye) currentSession.value.bye()
                 break
             default:
-                // Try bye/terminate anyway
                 if (currentSession.value.bye) currentSession.value.bye()
                 else if (currentSession.value.terminate) currentSession.value.terminate()
         }
 
-        resetCall()
+        if (wasActive) {
+            enterWrapup()
+        } else {
+            resetCall()
+        }
+    }
+
+    // Called by SIP store when session terminates (remote hangup or BYE confirmed)
+    function onCallTerminated() {
+        // Don't override wrapup or idle states
+        if (callState.value === 'wrapup' || callState.value === 'idle') return
+
+        // Queue confirmation calls (Asterisk login handshake) should not trigger wrapup
+        if (isQueueConfirmationCall) {
+            isQueueConfirmationCall = false
+            resetCall()
+            return
+        }
+
+        if (callState.value === 'active') {
+            enterWrapup()
+        } else {
+            resetCall()
+        }
+    }
+
+    function enterWrapup() {
+        console.log('[ActiveCall] Entering wrapup state')
+        stopRingtone()
+        stopTimer()
+        currentSession.value = null
+        callState.value = 'wrapup'
+        hasAudioTrack.value = false
+        // Keep callerNumber/callid for reference during wrapup
+        // Auto-clear after 30 seconds
+        if (wrapupTimer) clearTimeout(wrapupTimer)
+        wrapupTimer = setTimeout(() => endWrapup(), 30000)
+    }
+
+    function endWrapup() {
+        if (wrapupTimer) clearTimeout(wrapupTimer)
+        wrapupTimer = null
+        console.log('[ActiveCall] Wrapup ended')
+        callState.value = 'idle'
+        callerNumber.value = ''
+        ssid.value = ''
+        src_callid.value = ''
+        src_uid.value = null
+        bridge_id.value = ''
+        startedAt.value = null
+        durationSeconds.value = 0
+        // Don't clear aiInsights here — insights arrive AFTER call ends (20-120s processing)
+        // and the user may still be on the case-creation page. Cleared on next call via resetCall().
     }
 
     function resetCall() {
         stopRingtone()
         stopTimer()
+        isQueueConfirmationCall = false
         currentSession.value = null
         callState.value = 'idle'
         callerNumber.value = ''
         ssid.value = ''
         src_callid.value = ''
         src_uid.value = null
+        bridge_id.value = ''
         startedAt.value = null
         durationSeconds.value = 0
         hasAudioTrack.value = false
+        clearAiInsights()
     }
 
     function startTimer() {
@@ -224,84 +289,101 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         src_uid.value = uid
     }
 
+    function setBridgeId(id) {
+        if (id && id !== bridge_id.value) {
+            console.log('[ActiveCall] Bridge ID set:', id)
+            bridge_id.value = id
+        }
+    }
+
+    function addAiInsight(payload) {
+        if (!payload || !payload.notification_type) return
+        // Dedup by notification_type + call_id from payload metadata (survives wrapup state clear)
+        const callId = payload.call_metadata?.call_id || bridge_id.value || src_uid.value || ''
+        const dedupKey = `${payload.notification_type}:${callId}`
+        if (_seenInsightTypes.has(dedupKey)) return
+        _seenInsightTypes.add(dedupKey)
+        console.log('[ActiveCall] AI Insight added:', payload.notification_type)
+        aiInsights.value.push(payload)
+    }
+
+    function clearAiInsights() {
+        aiInsights.value = []
+        _seenInsightTypes.clear()
+    }
+
     function formatDuration(seconds) {
         const mins = Math.floor(seconds / 60)
         const secs = seconds % 60
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
 
-    // Polling logic for live status and UniqueID identification
-    function startPollingLiveStatus(extension) {
-        if (pollInterval) return
-        console.log('[ActiveCall] Starting live status polling for exten:', extension)
+    // ── Server-side queue sync via AMI channel data ─────────────────
+    // Periodically checks the AMI realtime store to detect when the agent
+    // is removed from the queue externally (e.g., by a supervisor or legacy UI).
+    // AMI queue member entries have UniqueIDs ending in "-mbr" with context
+    // "agentlogin" and event "mbradd". The isExtensionInQueue getter in
+    // the realtime store matches these entries via CHAN_EXTEN.
+    let queueSyncTimer = null
+    let consecutiveMisses = 0
+    const MISS_THRESHOLD = 3
+    const SYNC_INTERVAL = 10000 // 10 seconds
 
-        // Temporarily disabled polling as per user request
-        /*
-        pollInterval = setInterval(async () => {
+    async function getAgentExtension() {
+        const authStore = (await import('./auth')).useAuthStore()
+        const sipStore = (await import('./sip')).useSipStore()
+        return authStore.profile?.extension || authStore.profile?.exten || sipStore.extension
+    }
+
+    function startQueueSync() {
+        if (queueSyncTimer) return
+
+        console.log('[Queue Sync] Starting AMI-based queue state sync')
+        consecutiveMisses = 0
+
+        queueSyncTimer = setInterval(async () => {
             if (queueStatus.value !== 'online') {
-                stopPollingLiveStatus()
+                stopQueueSync()
                 return
             }
 
+            const ext = await getAgentExtension()
+            if (!ext) return
+
             try {
-                // Poll the wallonly endpoint as requested
-                const { data } = await axiosInstance.get('api/wallonly/', {
-                    params: { exten: extension, _c: 5 } // Fetch live entries
-                })
+                const realtimeStore = (await import('./realtime')).useRealtimeStore()
 
-                if (data.live && data.live.length > 0) {
-                    const k = data.live_k
-                    const liveAgents = data.live
+                // Skip check if AMI WebSocket is not connected
+                if (!realtimeStore.isAmiConnected) return
 
-                    // Veracity check: Is the current extension in the live list?
-                    const extIdx = k.exten?.[0] ?? k.extension?.[0] ?? -1
-                    if (extIdx !== -1) {
-                        const isPresent = liveAgents.some(row => String(row[extIdx]) === String(extension))
-                        if (isPresent) {
-                            console.info(`[Queue] VERIFIED: Extension ${extension} is actively present in the server's live queue.`);
+                const isPresent = realtimeStore.isExtensionInQueue(ext)
 
-                            // Phase 5 - AMI Peer State Verification
-                            try {
-                                const { data: amiData } = await axiosInstance.get('ami/svrts?c=-2');
-                                // console.error("AMI peer state snippet:", JSON.stringify(amiData).substring(0, 200));
-                            } catch (amiErr) {
-                                console.warn("AMI verification failed:", amiErr.message);
-                            }
-                        } else {
-                            console.error(`[Queue] WARNING: Your extension ${extension} is NOT found in the server's active agents list despite being 'Online' in UI.`);
-                        }
+                if (!isPresent) {
+                    consecutiveMisses++
+                    console.log(`[Queue Sync] Extension ${ext} not in AMI data (miss ${consecutiveMisses}/${MISS_THRESHOLD})`)
+                    if (consecutiveMisses >= MISS_THRESHOLD) {
+                        console.log(`[Queue Sync] Extension ${ext} not found in AMI for ${consecutiveMisses} checks — marking offline`)
+                        setQueueStatus('offline')
+                        stopQueueSync()
                     }
-
-                    const call = data.live[0]
-                    if (call && k) {
-                        // Identify indices
-                        const uidIdx = k.uniqueid?.[0] ?? k.id?.[0] ?? 0
-                        const callerIdx = k.caller_id?.[0] ?? k.phone?.[0] ?? 1
-
-                        const uniqueid = call[uidIdx]
-                        const remoteNumber = call[callerIdx]
-
-                        // If we are in ringing/active/calling, sync the uniqueid
-                        if (['ringing', 'active', 'calling'].includes(callState.value)) {
-                            if (!src_uid.value && uniqueid) {
-                                console.log('[ActiveCall] Syncing live call UniqueID:', uniqueid)
-                                src_uid.value = uniqueid
-                            }
-                        }
+                } else {
+                    if (consecutiveMisses > 0) {
+                        console.log(`[Queue Sync] Extension ${ext} found in AMI — resetting miss counter`)
                     }
+                    consecutiveMisses = 0
                 }
             } catch (e) {
-                console.warn('[ActiveCall] Live polling failed:', e)
+                // Error — don't count as miss
             }
-        }, 3000)
-        */
+        }, SYNC_INTERVAL)
     }
 
-    function stopPollingLiveStatus() {
-        if (pollInterval) {
-            console.log('[ActiveCall] Stopping live status polling')
-            clearInterval(pollInterval)
-            pollInterval = null
+    function stopQueueSync() {
+        if (queueSyncTimer) {
+            console.log('[Queue Sync] Stopping AMI-based queue state sync')
+            clearInterval(queueSyncTimer)
+            queueSyncTimer = null
+            consecutiveMisses = 0
         }
     }
 
@@ -314,27 +396,33 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         localStorage.setItem('queueStatus', status)
     }
 
-    async function checkWallboard(ext) {
-        try {
-            const { data } = await axiosInstance.get('api/wallonly/', {
-                params: { exten: ext, _c: 1 }
-            })
-            return data
-        } catch (e) {
-            // silent check
-        }
-    }
-
     async function joinQueue() {
+        // Guard against duplicate joins (e.g., SIP onRegistered re-triggering)
+        if (queueStatus.value === 'online' || queueStatus.value === 'joining') {
+            console.log('[ActiveCall] Already', queueStatus.value, '— skipping duplicate joinQueue')
+            startQueueSync() // Ensure sync is running even on re-init
+            return true
+        }
+
         try {
             const authStore = (await import('./auth')).useAuthStore()
             const sipStore = (await import('./sip')).useSipStore()
 
-            // Trigger SIP registration if not already active
-            if (!sipStore.isConnected && !sipStore.isRegistering) {
-                sipStore.start().catch(err => {
-                    console.error('[Helper] SIP auto-start check:', err)
-                })
+            // Ensure SIP is registered BEFORE telling Asterisk to join queue.
+            // Asterisk sends a confirmation INVITE immediately — SIP must be ready to receive it.
+            if (!sipStore.isRegistered) {
+                if (!sipStore.isConnected && !sipStore.isRegistering) {
+                    await sipStore.start()
+                }
+                // Wait for registration to complete (up to 5 seconds)
+                let attempts = 0
+                while (!sipStore.isRegistered && attempts < 20) {
+                    await new Promise(r => setTimeout(r, 250))
+                    attempts++
+                }
+                if (!sipStore.isRegistered) {
+                    throw new Error('SIP registration failed. Cannot join queue without voice connection.')
+                }
             }
 
             let ext = authStore.profile?.extension || authStore.profile?.exten || sipStore.extension
@@ -350,16 +438,16 @@ export const useActiveCallStore = defineStore('activeCall', () => {
             initRingtone()
 
             setQueueStatus('joining')
+            awaitingQueueConfirmation.value = true
 
-            // Authoritative payload: Only action "1"
+            console.log('[ActiveCall] SIP registered, sending join queue to Asterisk...')
             const payload = { action: '1' }
 
             const response = await axiosInstance.post('api/agent/', payload)
 
             if (response.status === 200 || response.status === 203) {
                 setQueueStatus('online')
-                // Immediate validation
-                await checkWallboard(ext)
+                startQueueSync()
             } else {
                 setQueueStatus('offline')
             }
@@ -367,12 +455,14 @@ export const useActiveCallStore = defineStore('activeCall', () => {
             return true
         } catch (e) {
             console.error("Queue join failed:", e.message)
+            awaitingQueueConfirmation.value = false
             setQueueStatus('offline')
             throw e
         }
     }
 
     async function leaveQueue() {
+        awaitingQueueConfirmation.value = false
         try {
             const authStore = (await import('./auth')).useAuthStore()
             const sipStore = (await import('./sip')).useSipStore()
@@ -390,10 +480,7 @@ export const useActiveCallStore = defineStore('activeCall', () => {
             await axiosInstance.post('api/agent/', payload)
 
             setQueueStatus('offline')
-            stopPollingLiveStatus()
-
-            // Immediate validation
-            if (ext) await checkWallboard(ext)
+            stopQueueSync()
 
         } catch (e) {
             console.error('Queue leave failed', e.message)
@@ -414,11 +501,13 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     }
 
     function resetQueueState() {
+        stopQueueSync()
         setQueueStatus('offline')
     }
 
     function initializeQueue() {
         if (queueStatus.value === 'online') {
+            // Re-join queue (which will also start sync on success)
             joinQueue().catch(() => { })
         }
     }
@@ -430,6 +519,8 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         ssid,
         src_callid,
         src_uid,
+        bridge_id,
+        aiInsights,
         startedAt,
         durationSeconds,
         hasAudioTrack,
@@ -445,8 +536,14 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         answerCall,
         hangupCall,
         resetCall,
+        onCallTerminated,
+        endWrapup,
         setAmiUniqueId,
+        setBridgeId,
+        addAiInsight,
+        clearAiInsights,
         autoAnswerEnabled,
+        awaitingQueueConfirmation,
         toggleAutoAnswer,
         initializeQueue,
         resetQueueState

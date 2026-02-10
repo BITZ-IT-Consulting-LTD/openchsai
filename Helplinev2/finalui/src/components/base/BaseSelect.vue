@@ -233,8 +233,9 @@ async function loadLevel(categoryId, isRoot = true) {
   if (!categoryId) return []
   try {
     loading.value = true
-    await store.viewCategory(categoryId)
-    const parsedOptions = parseRows(store.subcategories, store.subcategories_k, store.subcategories_ctx, false)
+    const data = await store.viewCategory(categoryId)
+    if (!data) return []
+    const parsedOptions = parseRows(data.items, data.keys, data.context, false)
 
     if (isRoot) {
       levelOptions.value = parsedOptions
@@ -251,12 +252,7 @@ async function loadLevel(categoryId, isRoot = true) {
 function parseRows(rows = [], k = {}, ctx = [], isSearchMode = false) {
     const idIdx = Number(k.id?.[0] ?? 0)
     const nameIdx = Number(k.name?.[0] ?? 5)
-    
-    let parentIdx = -1
-    // Prioritize category_id as parent pointer, fallback to parent_id
-    if (k.category_id) parentIdx = Number(k.category_id[0])
-    else if (k.parent_id) parentIdx = Number(k.parent_id[0])
-    
+
     if (!rows || !rows.length) return []
     
     if (isSearchMode) {
@@ -362,15 +358,15 @@ watch(searchQuery, (newVal) => {
                  params.root_id_ = props.categoryId
              }
 
-            await store.searchSubcategories(params)
-            
+            const result = await store.searchSubcategories(params)
+
             // Custom parsing for Search Results to include Hierarchy
-            const k = store.subcategories_k
+            const k = result.keys
             const nameIdx = Number(k.name?.[0] ?? 5)
-            const parentFullnameIdx = Number(k.category_fullname?.[0] ?? 10) 
+            const parentFullnameIdx = Number(k.category_fullname?.[0] ?? 10)
             const idIdx = Number(k.id?.[0] ?? 0)
 
-            const rawOptions = (store.subcategories || []).map(row => {
+            const rawOptions = (result.items || []).map(row => {
                 const id = row[idIdx]
                 const name = row[nameIdx]
                 const parentFullname = row[parentFullnameIdx]
@@ -421,34 +417,29 @@ watch(searchQuery, (newVal) => {
 
 // Handle option click
 async function handleOptionClick(option) {
+  // If in search mode, directly select the option (search results show full paths)
+  if (searchQuery.value) {
+    selectOption(option)
+    return
+  }
+
+  // Normal navigation mode - check for children
   if (option.hasChildren === null) {
     try {
-      // Check if it has children by loading it effectively
-      // Optimization: If we are in search results, we might assume leaf unless we check?
-      // But let's stick to existing logic: verify by fetching.
-      await store.viewCategory(option.id)
-      option.hasChildren = store.subcategories && store.subcategories.length > 0
+      const data = await store.viewCategory(option.id)
+      option.hasChildren = data?.items && data.items.length > 0
     } catch {
       option.hasChildren = false
     }
   }
 
   if (option.hasChildren) {
-    // If we dive, we consciously leave search mode
-    searchQuery.value = '' 
-    
     const subOptions = await loadLevel(option.id, false)
     if (subOptions.length > 0) {
       navigationPath.value.push({
         id: option.id,
         name: option.name,
-        options: levelOptions.value // This might be search results!
-        // If we back up from here, to search results? 
-        // No, usually back up to parent context.
-        // But if we drilled down from search, "Back" implies "Back to Search Results" or "Back to Parent"?
-        // Current logic saves `options: levelOptions.value`.
-        // If `levelOptions` was Search Results, then "Back" restores Search Results.
-        // That is excellent UX.
+        options: levelOptions.value
       })
       levelOptions.value = subOptions
     } else {

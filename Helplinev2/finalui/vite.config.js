@@ -43,11 +43,12 @@ export default defineConfig(({ mode }) => {
         },
         [endpoints.ATI_WS_PATH || '/ati/sync']: {
           target: endpoints.DEV_TARGET_ATI,
+          ws: true,
           changeOrigin: true,
           secure: false,
           configure: (proxy, options) => {
-            proxy.on('proxyReq', (proxyReq, req) => {
-              console.log(`[proxy-ati] ${req.method} ${req.url} -> ${options.target}${req.url}`);
+            proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
+              console.log(`[proxy-ati] WS connection ${req.url} -> ${options.target}`);
             });
           },
         },

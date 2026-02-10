@@ -117,9 +117,9 @@
           </div>
         </div>
 
-        <!-- Right Column: Insights Panel (1/3 width) -->
+        <!-- Right Column: Insights Panel (1/3 width) — sticky with internal scroll -->
         <div v-if="aiEnabled" class="lg:col-span-1 animate-in fade-in slide-in-from-right-8 duration-500">
-          <div class="sticky top-6">
+          <div class="sticky top-0 max-h-screen overflow-y-auto overscroll-contain pb-6 insights-scroll">
             <CaseInsightsPanel :aiEnabled="aiEnabled" />
           </div>
         </div>
@@ -142,13 +142,14 @@
 </template>
 
 <script>
-  import { ref, reactive, inject, onMounted } from 'vue';
+  import { ref, reactive, inject, onMounted, watch } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
   import { toast } from 'vue-sonner';
   import { useCaseStore } from '@/stores/cases';
   import { useReporterStore } from '@/stores/reporters';
   import { useClientStore } from '@/stores/clients';
   import { usePerpetratorStore } from '@/stores/perpetrators';
+  import { useActiveCallStore } from '@/stores/activeCall';
 
   import CaseHeader from '@/components/case-create/CaseHeader.vue';
   import ProgressTracker from '@/components/case-create/ProgressTracker.vue';
@@ -191,10 +192,22 @@
         mode.value = selectedMode;
       };
 
+      const activeCallStore = useActiveCallStore();
       const currentStep = ref(1);
       const totalSteps = 4;
       const isSubmittingCase = ref(false);
       const aiEnabled = ref(true);
+
+      // Auto-enable AI panel when call is active/wrapup and insights arrive
+      watch(
+        () => activeCallStore.aiInsights.length,
+        (count) => {
+          if (count > 0 && !aiEnabled.value) {
+            console.log('[CaseCreate] AI insights detected — auto-enabling AI panel')
+            aiEnabled.value = true
+          }
+        }
+      )
 
       onMounted(() => {
         if (route.query.phone) {
@@ -950,3 +963,20 @@
     }
   };
 </script>
+
+<style scoped>
+  .insights-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(155, 155, 155, 0.25) transparent;
+  }
+  .insights-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  .insights-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .insights-scroll::-webkit-scrollbar-thumb {
+    background: rgba(155, 155, 155, 0.25);
+    border-radius: 10px;
+  }
+</style>

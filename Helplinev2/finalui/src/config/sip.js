@@ -26,10 +26,11 @@ export function getActiveVoipConfig() {
   const host = voip.SIP_HOST || import.meta.env.VITE_SIP_HOST || DEFAULT_HOST;
   let wsUrl = voip.SIP_WS_URL || import.meta.env.VITE_SIP_WS_URL || `wss://${host}/ws/`;
 
-  // Smart Dev Proxy: If in dev mode, route through registry-defined path to bypass SSL/1006 errors
-  if (import.meta.env.DEV && endpoints.SIP_WS_PATH) {
+  // Smart Proxy: Route through proxy path to avoid direct backend connections.
+  // In dev, Vite proxies these paths. In production, nginx proxies them.
+  if (endpoints.SIP_WS_PATH) {
     const targetDomain = endpoints.DEV_TARGET_SIP?.replace('https://', '').replace('http://', '').split(':')[0];
-    if (wsUrl.includes(targetDomain) || wsUrl.includes('192.168.10.3')) {
+    if (targetDomain && wsUrl.includes(targetDomain)) {
       wsUrl = endpoints.SIP_WS_PATH;
     }
   }
@@ -45,7 +46,7 @@ export function getActiveVoipConfig() {
     SIP_WS_URL: wsUrl,
     SIP_USER_PREFIX: voip.SIP_USER_PREFIX || '',
     SIP_PASS_PREFIX: voip.SIP_PASS_PREFIX || '',
-    SIP_PASSWORD: import.meta.env.VITE_VA_SIP_PASS_PREFIX || '23kdefrtgos09812100',
+    SIP_PASSWORD: import.meta.env.VITE_SIP_PASS_PREFIX || import.meta.env.VITE_VA_SIP_PASS_PREFIX || '',
     SIP_CALL_TIMEOUT: parseInt(import.meta.env.VITE_SIP_CALL_TIMEOUT || '30000', 10),
     AMI_WS_URL: endpoints.AMI_HOST || import.meta.env.VITE_AMI_WS_URL || `wss://${host}:8384/ami/sync`,
     ICE_SERVERS: voip.ICE_SERVERS || [
