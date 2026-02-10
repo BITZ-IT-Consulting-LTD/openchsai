@@ -234,9 +234,9 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         callState.value = 'wrapup'
         hasAudioTrack.value = false
         // Keep callerNumber/callid for reference during wrapup
-        // Auto-clear after 30 seconds
+        // Auto-clear after 200 seconds (allows time for AI insights to arrive)
         if (wrapupTimer) clearTimeout(wrapupTimer)
-        wrapupTimer = setTimeout(() => endWrapup(), 30000)
+        wrapupTimer = setTimeout(() => endWrapup(), 200000)
     }
 
     function endWrapup() {
