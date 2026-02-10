@@ -36,8 +36,10 @@
     </main>
 
     <!-- Right Sidebar (AI Assistant) -->
-    <aside v-if="$slots['right-sidebar']" class="w-full lg:w-80 xl:w-96 space-y-6 shrink-0">
-      <slot name="right-sidebar"></slot>
+    <aside v-if="$slots['right-sidebar']" class="w-full lg:w-80 xl:w-96 shrink-0 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto lg:overscroll-contain insights-scroll">
+      <div class="space-y-6 py-6">
+        <slot name="right-sidebar"></slot>
+      </div>
     </aside>
   </div>
 </template>
@@ -47,3 +49,20 @@ import { inject } from 'vue';
 
 const isDarkMode = inject('isDarkMode');
 </script>
+
+<style scoped>
+.insights-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 155, 155, 0.25) transparent;
+}
+.insights-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.insights-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.insights-scroll::-webkit-scrollbar-thumb {
+  background: rgba(155, 155, 155, 0.25);
+  border-radius: 2px;
+}
+</style>

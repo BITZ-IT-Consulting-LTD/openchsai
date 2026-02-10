@@ -7,15 +7,16 @@
                 :class="isDarkMode ? 'bg-amber-900/30 text-amber-300 border-amber-800' : 'bg-amber-50 text-amber-600 border-amber-100'">
                 Classification
             </span>
-            <span class="text-xs font-mono opacity-50">{{ formatTime(prediction.created_on) }}</span>
+            <span class="text-xs font-mono" :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">{{ formatTime(prediction.created_on) }}</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Main Category -->
             <div class="p-4 rounded-lg border"
                 :class="isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-gray-100'">
-                <div class="text-xs font-semibold uppercase tracking-wider mb-1 opacity-60">Main Category</div>
-                <div class="text-lg font-bold" :class="isDarkMode ? 'text-gray-100' : 'text-gray-900'">
+                <div class="text-xs font-semibold uppercase tracking-wider mb-1"
+                    :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">Main Category</div>
+                <div class="text-lg font-bold" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                     {{ classification.main_category || 'N/A' }}
                 </div>
             </div>
@@ -23,15 +24,36 @@
             <!-- Sub Category -->
             <div class="p-4 rounded-lg border"
                 :class="isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-gray-100'">
-                <div class="text-xs font-semibold uppercase tracking-wider mb-1 opacity-60">Sub Category</div>
-                <div class="text-lg font-bold" :class="isDarkMode ? 'text-gray-100' : 'text-gray-900'">
+                <div class="text-xs font-semibold uppercase tracking-wider mb-1"
+                    :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">Sub Category</div>
+                <div class="text-lg font-bold" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
                     {{ classification.sub_category || 'N/A' }}
+                </div>
+            </div>
+
+            <!-- Intervention -->
+            <div v-if="classification.intervention" class="p-4 rounded-lg border"
+                :class="isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-gray-100'">
+                <div class="text-xs font-semibold uppercase tracking-wider mb-1"
+                    :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">Intervention</div>
+                <div class="text-lg font-bold" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+                    {{ classification.intervention }}
+                </div>
+            </div>
+
+            <!-- Priority -->
+            <div v-if="classification.priority !== undefined && classification.priority !== null" class="p-4 rounded-lg border"
+                :class="isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-gray-100'">
+                <div class="text-xs font-semibold uppercase tracking-wider mb-1"
+                    :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">Priority</div>
+                <div class="text-lg font-bold" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+                    {{ classification.priority }}
                 </div>
             </div>
         </div>
 
         <div v-if="classification.risk_level" class="mt-4 flex items-center gap-2 text-sm font-medium">
-            <span class="opacity-60">Risk Level:</span>
+            <span :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">Risk Level:</span>
             <span :class="getRiskColor(classification.risk_level)">{{ classification.risk_level }}</span>
         </div>
 

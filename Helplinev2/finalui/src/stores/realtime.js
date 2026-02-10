@@ -50,8 +50,23 @@ export const useRealtimeStore = defineStore('realtime', {
     // Count of unread ATI text interactions
     unreadTextCount: (state) => {
       return Object.values(state.atiInteractions).filter(i => {
-        return Number(i.ATI_STATE_QUEUE) > 0 && !Number(i.ATI_STATE_CONNECT)
+        return Number(i.ATI_UNREAD) > 0 || (Number(i.ATI_STATE_QUEUE) > 0 && !Number(i.ATI_STATE_CONNECT))
       }).length
+    },
+
+    // AI notifications from the ATI text channel (source='aii', context='trunk')
+    aiNotifications: (state) => {
+      return Object.values(state.atiInteractions).filter(i => {
+        return i.ATI_SRC === 'aii' && i.ATI_CONTEXT === 'trunk'
+      })
+    },
+
+    // Get AI notifications matching a specific bridge_id
+    aiNotificationsForCall: (state) => (bridgeId) => {
+      if (!bridgeId) return []
+      return Object.values(state.atiInteractions).filter(i => {
+        return i.ATI_SRC === 'aii' && i.ATI_CONTEXT === 'trunk' && i.ATI_BRIDGE_ID === bridgeId
+      })
     },
 
     // Check if a given extension appears in any AMI channel (queued/active agent)
@@ -116,7 +131,9 @@ export const useRealtimeStore = defineStore('realtime', {
       }
     },
 
-    // ── ATI Field Mapping (from old UI's ati.js) ────────────────────
+    // ── ATI Field Mapping (from legacy ati.js ATI constants) ────────
+    // NOTE: ATI uses a DIFFERENT schema from AMI at indices 20+.
+    // Legacy reference: /Local-Dev-Helpine/app/ati.js lines 49-88
     parseAtiInteraction(key, arr) {
       if (!Array.isArray(arr)) return { _uid: key, ...arr }
       return {
@@ -129,20 +146,32 @@ export const useRealtimeStore = defineStore('realtime', {
         ATI_CONTEXT: arr[6] || '',
         ATI_EXTEN: arr[7] || '',
         ATI_ACTION_ID: arr[8] || '',
-        ATI_SOURCE_TYPE: arr[10] || '',
+        ATI_STATE_ORIG: arr[9] || 0,
+        ATI_STATE_DOWN: arr[10] || 0,
+        ATI_STATE_DIAL: arr[11] || 0,
+        ATI_STATE_RING: arr[12] || 0,
         ATI_STATE_UP: arr[13] || 0,
         ATI_STATE_QUEUE: arr[14] || 0,
         ATI_STATE_CONNECT: arr[15] || 0,
         ATI_STATE_HANGUP: arr[16] || 0,
+        ATI_STATE_MUTE: arr[17] || 0,
         ATI_STATE_HOLD: arr[18] || 0,
-        ATI_CBO_TS: arr[20] || '',
-        ATI_CBO: arr[21] || '',
-        ATI_CBO_UNIQUEID: arr[22] || '',
-        ATI_CBO_CID: arr[23] || '',
-        ATI_XFER_TS: arr[24] || '',
-        ATI_XFER: arr[25] || '',
-        ATI_XFER_UNIQUEID: arr[26] || '',
-        ATI_XFER_CID: arr[27] || '',
+        ATI_HOLD_TIME: arr[19] || 0,
+        // ATI-specific fields (different from AMI at indices 20+)
+        ATI_BRIDGE_ID: arr[20] || '',      // Call bridge ID for AI matching
+        ATI_BRIDGE_COUNT: arr[21] || 0,
+        ATI_UNREAD: arr[22] || 0,
+        ATI_HANGUP_REASON: arr[23] || '',
+        ATI_UID_2: arr[24] || '',
+        ATI_CID_2: arr[25] || '',
+        ATI_SRC: arr[26] || '',            // Source type: 'aii', 'whatsapp', etc.
+        ATI_MSG: arr[27] || '',            // Message content
+        ATI_BREAK_REASON: arr[28] || '',
+        ATI_VECTOR: arr[29] || '',
+        ATI_STATUS_: arr[31] || '',
+        ATI_STATUS_TXT_: arr[32] || '',
+        ATI_STATUS_TS_: arr[33] || '',
+        ATI_STATUS_TS_TXT_: arr[34] || '',
         _raw: arr
       }
     },

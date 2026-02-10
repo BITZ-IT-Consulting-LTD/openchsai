@@ -13,11 +13,16 @@
             Caseworker Support
           </h3>
           <p class="text-[10px] font-medium text-gray-500 leading-none">
-            {{ isProcessing ? processingStatus : 'Supportive insight — human review required' }}
+            {{ hasRealtimeInsights ? 'Live AI analysis' : (isProcessing ? processingStatus : 'Supportive insight — human review required') }}
           </p>
         </div>
-        <!-- Status Indicator -->
-        <div v-if="isProcessing" class="ml-auto">
+        <!-- Live Indicator -->
+        <div v-if="hasRealtimeInsights" class="ml-auto flex items-center gap-1.5">
+          <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+          <span class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
+        </div>
+        <!-- Processing Indicator -->
+        <div v-else-if="isProcessing" class="ml-auto">
           <div class="flex gap-1">
             <span class="w-1.5 h-1.5 bg-[#008080] rounded-full animate-bounce" style="animation-delay: 0s"></span>
             <span class="w-1.5 h-1.5 bg-[#008080] rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
@@ -27,8 +32,62 @@
       </div>
     </div>
 
-    <!-- Audio Upload Section -->
-    <div v-if="aiEnabled" class="rounded-xl shadow-lg border p-6 transition-all duration-200"
+    <!-- ═══ REAL-TIME AI INSIGHT CARDS (collapsible accordion) ═══ -->
+    <template v-if="hasRealtimeInsights">
+      <div class="space-y-2">
+        <div v-for="(insight, idx) in sortedRealtimeInsights"
+          :key="insight.notification_type + '-' + idx"
+          class="rounded-xl border overflow-hidden transition-all duration-200"
+          :class="isDarkMode ? 'border-neutral-700' : 'border-gray-200'">
+
+          <!-- Accordion Header (always visible) -->
+          <button @click="toggleCard(idx)"
+            class="w-full flex items-center gap-2.5 px-4 py-3 text-left transition-colors"
+            :class="isDarkMode
+              ? 'hover:bg-neutral-800/50'
+              : 'hover:bg-gray-50'">
+            <div class="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+              :class="getCardIconStyle(insight.notification_type)">
+              <i-mdi-lightbulb-on v-if="getCardMeta(insight.notification_type).color === 'indigo'" class="w-3.5 h-3.5" />
+              <i-mdi-text-box v-else-if="getCardMeta(insight.notification_type).color === 'amber'" class="w-3.5 h-3.5" />
+              <i-mdi-tag-multiple v-else-if="getCardMeta(insight.notification_type).color === 'violet'" class="w-3.5 h-3.5" />
+              <i-mdi-shield-check v-else-if="getCardMeta(insight.notification_type).color === 'cyan'" class="w-3.5 h-3.5" />
+              <i-mdi-account-search v-else-if="getCardMeta(insight.notification_type).color === 'teal'" class="w-3.5 h-3.5" />
+              <i-mdi-translate v-else-if="getCardMeta(insight.notification_type).color === 'purple'" class="w-3.5 h-3.5" />
+              <i-mdi-microphone v-else-if="getCardMeta(insight.notification_type).color === 'blue'" class="w-3.5 h-3.5" />
+              <i-mdi-check-all v-else-if="getCardMeta(insight.notification_type).color === 'green'" class="w-3.5 h-3.5" />
+              <i-mdi-information v-else class="w-3.5 h-3.5" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold truncate" :class="isDarkMode ? 'text-gray-200' : 'text-gray-800'">
+                {{ getCardLabel(insight.notification_type) }}
+              </div>
+              <div class="text-[10px] truncate" :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">
+                {{ getCardSummary(insight) }}
+              </div>
+            </div>
+            <i-mdi-chevron-down class="w-4 h-4 transition-transform duration-200 flex-shrink-0"
+              :class="[
+                expandedCards.has(idx) ? 'rotate-180' : '',
+                isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              ]" />
+          </button>
+
+          <!-- Accordion Body (expandable) -->
+          <div v-show="expandedCards.has(idx)" class="border-t"
+            :class="isDarkMode ? 'border-neutral-700' : 'border-gray-200'">
+            <component
+              :is="getInsightComponent(insight.notification_type)"
+              :prediction="{ created_on: toUnixTs(insight.timestamp), src_callid: insight.call_metadata?.call_id || activeCallStore.bridge_id, notification_type: insight.notification_type }"
+              :payload="insight.payload || insight"
+            />
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══ FALLBACK: Audio Upload Section (only when no real-time data) ═══ -->
+    <div v-else-if="aiEnabled" class="rounded-xl shadow-lg border p-6 transition-all duration-200"
       :class="isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-bold" :class="isDarkMode ? 'text-gray-100' : 'text-gray-900'">
@@ -88,8 +147,8 @@
       </div>
     </div>
 
-    <!-- Processing Loader -->
-    <div v-if="isProcessing"
+    <!-- Processing Loader (hidden during real-time mode) -->
+    <div v-if="isProcessing && !hasRealtimeInsights"
       class="p-8 rounded-xl border bg-gray-50 dark:bg-gray-900/50 border-dashed border-gray-200 dark:border-gray-800">
       <div class="flex items-center gap-4">
         <div class="relative w-10 h-10 flex-shrink-0">
@@ -109,8 +168,8 @@
       </div>
     </div>
 
-    <!-- Results Section -->
-    <div v-if="aiEnabled && processedData" v-show="!isProcessing"
+    <!-- Results Section (audio pipeline results — hidden during real-time mode) -->
+    <div v-if="aiEnabled && processedData && !hasRealtimeInsights" v-show="!isProcessing"
       class="rounded-xl shadow-lg border overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-bottom-8"
       :class="isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'">
       <!-- Tab Switcher -->
@@ -310,8 +369,8 @@
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-if="aiEnabled && !audioFile && !isProcessing" class="text-center p-12 opacity-50">
+    <!-- Empty State (only when no real-time insights and no audio) -->
+    <div v-if="aiEnabled && !hasRealtimeInsights && !audioFile && !isProcessing" class="text-center p-12 opacity-50">
       <div
         class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-gray-300 dark:border-gray-700">
         <i-mdi-microphone-off class="w-8 h-8 text-gray-400" />
@@ -323,8 +382,77 @@
 </template>
 
 <script setup>
-  import { ref, inject, computed } from 'vue'
+  import { ref, reactive, inject, computed } from 'vue'
   import axios from 'axios'
+  import { useActiveCallStore } from '@/stores/activeCall'
+
+  // AI Insight Card Components
+  import AiInsightsCard from '@/components/predictions/AiInsightsCard.vue'
+  import AiTranscriptCard from '@/components/predictions/AiTranscriptCard.vue'
+  import AiTranslationCard from '@/components/predictions/AiTranslationCard.vue'
+  import AiClassificationCard from '@/components/predictions/AiClassificationCard.vue'
+  import AiEntitiesCard from '@/components/predictions/AiEntitiesCard.vue'
+  import AiSummaryCard from '@/components/predictions/AiSummaryCard.vue'
+  import AiQaScoringCard from '@/components/predictions/AiQaScoringCard.vue'
+  import AiCompleteCard from '@/components/predictions/AiCompleteCard.vue'
+
+  const INSIGHT_COMPONENT_MAP = {
+    post_call_transcription: AiTranscriptCard,
+    postcall_transcription: AiTranscriptCard,
+    post_call_translation: AiTranslationCard,
+    postcall_translation: AiTranslationCard,
+    post_call_classification: AiClassificationCard,
+    postcall_classification: AiClassificationCard,
+    post_call_entities: AiEntitiesCard,
+    postcall_entities: AiEntitiesCard,
+    post_call_summary: AiSummaryCard,
+    postcall_summary: AiSummaryCard,
+    post_call_summarization: AiSummaryCard,
+    postcall_summarization: AiSummaryCard,
+    post_call_mistral_insights: AiInsightsCard,
+    postcall_mistral_insights: AiInsightsCard,
+    post_call_insights: AiInsightsCard,
+    postcall_insights: AiInsightsCard,
+    post_call_ai_service_insights: AiInsightsCard,
+    postcall_ai_service_insights: AiInsightsCard,
+    post_call_qa_scoring: AiQaScoringCard,
+    postcall_qa_scoring: AiQaScoringCard,
+    post_call_complete: AiCompleteCard,
+    postcall_complete: AiCompleteCard
+  }
+
+  const INSIGHT_PRIORITY = [
+    'post_call_ai_service_insights',
+    'post_call_mistral_insights',
+    'post_call_insights',
+    'post_call_summary',
+    'post_call_summarization',
+    'post_call_classification',
+    'post_call_qa_scoring',
+    'post_call_entities',
+    'post_call_translation',
+    'post_call_transcription',
+    'post_call_complete'
+  ]
+
+  const normalizeNotificationType = (type) => {
+    if (!type) return ''
+    return type.replace(/^postcall_/, 'post_call_')
+  }
+
+  const getInsightComponent = (type) => {
+    if (!type) return AiInsightsCard
+    const normalized = normalizeNotificationType(type)
+    return INSIGHT_COMPONENT_MAP[normalized] || INSIGHT_COMPONENT_MAP[type] || AiInsightsCard
+  }
+
+  // Convert ISO string or numeric timestamp to Unix seconds
+  const toUnixTs = (ts) => {
+    if (!ts) return Math.floor(Date.now() / 1000)
+    if (typeof ts === 'number') return ts
+    const d = new Date(ts)
+    return isNaN(d.getTime()) ? Math.floor(Date.now() / 1000) : Math.floor(d.getTime() / 1000)
+  }
 
   const props = defineProps({
     aiEnabled: {
@@ -333,8 +461,98 @@
     }
   })
 
+  const activeCallStore = useActiveCallStore()
   const isDarkMode = inject('isDarkMode')
   const activeMode = ref('insights')
+
+  // Real-time AI insights from active call
+  const hasRealtimeInsights = computed(() => activeCallStore.aiInsights.length > 0)
+
+  const sortedRealtimeInsights = computed(() => {
+    return [...activeCallStore.aiInsights].sort((a, b) => {
+      const idxA = INSIGHT_PRIORITY.indexOf(normalizeNotificationType(a.notification_type))
+      const idxB = INSIGHT_PRIORITY.indexOf(normalizeNotificationType(b.notification_type))
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      if (idxA !== -1) return -1
+      if (idxB !== -1) return 1
+      return 0
+    })
+  })
+
+  // ── Accordion State ──────────────────────────────────────────────
+  const expandedCards = reactive(new Set([0])) // First card (Case Insights) expanded by default
+
+  const toggleCard = (idx) => {
+    if (expandedCards.has(idx)) {
+      expandedCards.delete(idx)
+    } else {
+      expandedCards.add(idx)
+    }
+  }
+
+  // Card metadata for accordion headers
+  const CARD_META = {
+    post_call_ai_service_insights: { label: 'Case Insights', icon: 'i-mdi-lightbulb-on', color: 'indigo' },
+    post_call_insights: { label: 'Case Insights', icon: 'i-mdi-lightbulb-on', color: 'indigo' },
+    post_call_mistral_insights: { label: 'Case Insights', icon: 'i-mdi-lightbulb-on', color: 'indigo' },
+    post_call_summary: { label: 'Summary', icon: 'i-mdi-text-box', color: 'amber' },
+    post_call_summarization: { label: 'Summary', icon: 'i-mdi-text-box', color: 'amber' },
+    post_call_classification: { label: 'Classification', icon: 'i-mdi-tag-multiple', color: 'violet' },
+    post_call_qa_scoring: { label: 'QA Scoring', icon: 'i-mdi-shield-check', color: 'cyan' },
+    post_call_entities: { label: 'Named Entities', icon: 'i-mdi-account-search', color: 'teal' },
+    post_call_translation: { label: 'Translation', icon: 'i-mdi-translate', color: 'purple' },
+    post_call_transcription: { label: 'Transcript', icon: 'i-mdi-microphone', color: 'blue' },
+    post_call_complete: { label: 'Processing Complete', icon: 'i-mdi-check-all', color: 'green' }
+  }
+
+  const getCardMeta = (type) => {
+    const normalized = normalizeNotificationType(type)
+    return CARD_META[normalized] || CARD_META[type] || { label: 'Insight', icon: 'i-mdi-information', color: 'gray' }
+  }
+
+  const getCardLabel = (type) => getCardMeta(type).label
+
+  const COLOR_STYLES = {
+    indigo: { dark: 'bg-indigo-900/30 text-indigo-400', light: 'bg-indigo-100 text-indigo-600' },
+    amber: { dark: 'bg-amber-900/30 text-amber-400', light: 'bg-amber-100 text-amber-600' },
+    violet: { dark: 'bg-violet-900/30 text-violet-400', light: 'bg-violet-100 text-violet-600' },
+    cyan: { dark: 'bg-cyan-900/30 text-cyan-400', light: 'bg-cyan-100 text-cyan-600' },
+    teal: { dark: 'bg-teal-900/30 text-teal-400', light: 'bg-teal-100 text-teal-600' },
+    purple: { dark: 'bg-purple-900/30 text-purple-400', light: 'bg-purple-100 text-purple-600' },
+    blue: { dark: 'bg-blue-900/30 text-blue-400', light: 'bg-blue-100 text-blue-600' },
+    green: { dark: 'bg-green-900/30 text-green-400', light: 'bg-green-100 text-green-600' },
+    gray: { dark: 'bg-gray-800 text-gray-400', light: 'bg-gray-100 text-gray-600' }
+  }
+
+  const getCardIconStyle = (type) => {
+    const color = getCardMeta(type).color
+    const styles = COLOR_STYLES[color] || COLOR_STYLES.gray
+    return isDarkMode.value ? styles.dark : styles.light
+  }
+
+  const getCardSummary = (insight) => {
+    const type = normalizeNotificationType(insight.notification_type)
+    const p = insight.payload || {}
+    if (type === 'post_call_ai_service_insights' || type === 'post_call_insights' || type === 'post_call_mistral_insights') {
+      const cls = p.insights?.classification || p.insights?.category_suggestions || p.category_suggestions || {}
+      return cls.primary_category ? `${cls.primary_category} — ${cls.sub_category || ''}` : 'AI analysis available'
+    }
+    if (type === 'post_call_summary' || type === 'post_call_summarization') {
+      const s = p.summary || ''
+      return s.length > 60 ? s.slice(0, 60) + '...' : s || 'Call summary'
+    }
+    if (type === 'post_call_classification') {
+      const cls = p.classification || {}
+      return cls.main_category ? `${cls.main_category} / ${cls.sub_category || ''}` : 'Classification results'
+    }
+    if (type === 'post_call_qa_scoring') return 'Quality assurance metrics'
+    if (type === 'post_call_entities') return 'Extracted names & locations'
+    if (type === 'post_call_translation') return p.target_language ? `Translated to ${p.target_language}` : 'Translated text'
+    if (type === 'post_call_transcription') return p.language ? `Language: ${p.language}` : 'Audio transcript'
+    if (type === 'post_call_complete') return 'All AI tasks finished'
+    return 'Tap to expand'
+  }
+
   const isProcessing = ref(false)
   const processingStatus = ref('Ready')
   const processingProgress = ref(0)

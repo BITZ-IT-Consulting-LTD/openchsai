@@ -56,11 +56,12 @@ export const usePredictionsStore = defineStore('predictions', {
             this.error = null
             try {
                 const queryParams = {
-                    src: 'aii',
                     _c: params._c || this.pagination.limit,
                     _o: params._o !== undefined ? params._o : this.pagination.offset,
                     ...params
                 }
+                // Only add src filter if explicitly provided (empty = all sources)
+                if (!queryParams.src) delete queryParams.src
 
                 const { data } = await axiosInstance.get('api/pmessages/', {
                     params: queryParams,
