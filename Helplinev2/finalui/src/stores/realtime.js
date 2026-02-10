@@ -263,10 +263,19 @@ export const useRealtimeStore = defineStore('realtime', {
       if (this._amiWs && this.amiReady === 'open') return
 
       const taxonomyStore = useTaxonomyStore()
-      // Use proxy path so requests go through Vite (dev) or nginx (prod)
-      const amiPath = taxonomyStore.endpoints?.AMI_WS_PATH || '/ami/sync'
-      const resolved = this.resolveWsHost(amiPath)
-      const url = `${resolved}${resolved.includes('?') ? '&' : '?'}c=-2`
+
+      let url
+      if (import.meta.env.DEV && taxonomyStore.endpoints?.AMI_HOST) {
+        // In DEV mode, connect directly to the backend WebSocket to bypass Vite's
+        // http-proxy which mangles the Sec-WebSocket-Accept handshake over TLS.
+        const directUrl = taxonomyStore.endpoints.AMI_HOST
+        url = `${directUrl}${directUrl.includes('?') ? '&' : '?'}c=-2`
+      } else {
+        // In production, use the relative proxy path resolved by nginx.
+        const amiPath = taxonomyStore.endpoints?.AMI_WS_PATH || '/ami/sync'
+        const resolved = this.resolveWsHost(amiPath)
+        url = `${resolved}${resolved.includes('?') ? '&' : '?'}c=-2`
+      }
 
       console.log('[Realtime] Connecting AMI:', url)
       this.amiReady = 'connecting'
