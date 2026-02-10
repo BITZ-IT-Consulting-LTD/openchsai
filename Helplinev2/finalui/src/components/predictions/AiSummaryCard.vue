@@ -8,7 +8,7 @@
                     :class="isDarkMode ? 'bg-pink-900/30 text-pink-300 border-pink-800' : 'bg-pink-50 text-pink-600 border-pink-100'">
                     Summary
                 </span>
-                <span class="text-xs font-mono opacity-50">{{ formatTime(prediction.created_on) }}</span>
+                <span class="text-xs font-mono" :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">{{ formatTime(prediction.created_on) }}</span>
             </div>
             <div v-if="payload.risk_assessment" class="text-xs font-bold px-2 py-0.5 rounded"
                 :class="getRiskClass(payload.risk_assessment)">

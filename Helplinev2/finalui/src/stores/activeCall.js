@@ -10,6 +10,9 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     const ssid = ref('')
     const src_callid = ref('')
     const src_uid = ref(null) // AMI CHAN_UNIQUEID
+    const bridge_id = ref('') // AMI CHAN_BRIDGE_ID — used for AI insight matching
+    const aiInsights = ref([]) // Decoded AI insight payloads for current call
+    const _seenInsightTypes = new Set() // Dedup tracker (notification_type keys)
     const startedAt = ref(null)
     const durationSeconds = ref(0)
     const hasAudioTrack = ref(false)
@@ -245,8 +248,11 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         ssid.value = ''
         src_callid.value = ''
         src_uid.value = null
+        bridge_id.value = ''
         startedAt.value = null
         durationSeconds.value = 0
+        // Don't clear aiInsights here — insights arrive AFTER call ends (20-120s processing)
+        // and the user may still be on the case-creation page. Cleared on next call via resetCall().
     }
 
     function resetCall() {
@@ -259,9 +265,11 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         ssid.value = ''
         src_callid.value = ''
         src_uid.value = null
+        bridge_id.value = ''
         startedAt.value = null
         durationSeconds.value = 0
         hasAudioTrack.value = false
+        clearAiInsights()
     }
 
     function startTimer() {
@@ -279,6 +287,29 @@ export const useActiveCallStore = defineStore('activeCall', () => {
 
     function setAmiUniqueId(uid) {
         src_uid.value = uid
+    }
+
+    function setBridgeId(id) {
+        if (id && id !== bridge_id.value) {
+            console.log('[ActiveCall] Bridge ID set:', id)
+            bridge_id.value = id
+        }
+    }
+
+    function addAiInsight(payload) {
+        if (!payload || !payload.notification_type) return
+        // Dedup by notification_type + call_id from payload metadata (survives wrapup state clear)
+        const callId = payload.call_metadata?.call_id || bridge_id.value || src_uid.value || ''
+        const dedupKey = `${payload.notification_type}:${callId}`
+        if (_seenInsightTypes.has(dedupKey)) return
+        _seenInsightTypes.add(dedupKey)
+        console.log('[ActiveCall] AI Insight added:', payload.notification_type)
+        aiInsights.value.push(payload)
+    }
+
+    function clearAiInsights() {
+        aiInsights.value = []
+        _seenInsightTypes.clear()
     }
 
     function formatDuration(seconds) {
@@ -488,6 +519,8 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         ssid,
         src_callid,
         src_uid,
+        bridge_id,
+        aiInsights,
         startedAt,
         durationSeconds,
         hasAudioTrack,
@@ -506,6 +539,9 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         onCallTerminated,
         endWrapup,
         setAmiUniqueId,
+        setBridgeId,
+        addAiInsight,
+        clearAiInsights,
         autoAnswerEnabled,
         awaitingQueueConfirmation,
         toggleAutoAnswer,

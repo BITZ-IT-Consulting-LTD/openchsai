@@ -209,6 +209,8 @@
         postcall_mistral_insights: AiInsightsCard,
         post_call_insights: AiInsightsCard,
         postcall_insights: AiInsightsCard,
+        post_call_ai_service_insights: AiInsightsCard,
+        postcall_ai_service_insights: AiInsightsCard,
         post_call_qa_scoring: AiQaScoringCard,
         postcall_qa_scoring: AiQaScoringCard,
         post_call_complete: AiCompleteCard,
@@ -216,6 +218,7 @@
     }
 
     const PRIORITY_ORDER = [
+        'post_call_ai_service_insights',
         'post_call_mistral_insights',
         'post_call_insights',
         'post_call_summary',
@@ -321,6 +324,7 @@
     const getTypeColor = (type) => {
         const norm = normalizeType(type)
         const colors = {
+            post_call_ai_service_insights: 'bg-rose-500',
             post_call_mistral_insights: 'bg-rose-500',
             post_call_insights: 'bg-rose-500',
             post_call_summary: 'bg-amber-500',
@@ -382,27 +386,30 @@
             })
         })
 
-        // 4. Group by Address (Caller ID) - combining all events from the same person into one row
+        // 4. Group by Call ID - combining all AI events from the same call into one row
         const groups = {}
         rows.forEach(r => {
-            const cid = r.src_address || `unknown-${r.id}`
-            if (!groups[cid]) {
-                groups[cid] = {
+            const key = r.src_callid || r.src_address || `unknown-${r.id}`
+            if (!groups[key]) {
+                groups[key] = {
                     src_callid: r.src_callid,
-                    src_address: cid,
+                    src_address: r.src_address,
                     created_on: r.created_on,
                     predictions: []
                 }
             }
-            groups[cid].predictions.push(r)
+            groups[key].predictions.push(r)
 
             // Keep the latest created_on for the table row (newest activity)
-            if (r.created_on > groups[cid].created_on) {
-                groups[cid].created_on = r.created_on
+            if (r.created_on > groups[key].created_on) {
+                groups[key].created_on = r.created_on
             }
-            // Update callid if missing
-            if (!groups[cid].src_callid && r.src_callid) {
-                groups[cid].src_callid = r.src_callid
+            // Update callid/address if missing
+            if (!groups[key].src_callid && r.src_callid) {
+                groups[key].src_callid = r.src_callid
+            }
+            if (!groups[key].src_address && r.src_address) {
+                groups[key].src_address = r.src_address
             }
         })
 

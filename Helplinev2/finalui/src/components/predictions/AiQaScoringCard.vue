@@ -7,7 +7,7 @@
                 :class="isDarkMode ? 'bg-cyan-900/30 text-cyan-300 border-cyan-800' : 'bg-cyan-50 text-cyan-600 border-cyan-100'">
                 QA Scoring
             </span>
-            <span class="text-xs font-mono opacity-50">{{ formatTime(prediction.created_on) }}</span>
+            <span class="text-xs font-mono" :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">{{ formatTime(prediction.created_on) }}</span>
         </div>
 
         <div class="space-y-6">

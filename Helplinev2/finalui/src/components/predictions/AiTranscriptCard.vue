@@ -9,7 +9,7 @@
                     :class="isDarkMode ? 'bg-blue-900/30 text-blue-300 border-blue-800' : 'bg-blue-50 text-blue-600 border-blue-100'">
                     Transcript
                 </span>
-                <span class="text-xs font-mono opacity-50">{{ formatTime(prediction.created_on) }}</span>
+                <span class="text-xs font-mono" :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">{{ formatTime(prediction.created_on) }}</span>
             </div>
             <div class="text-xs font-semibold" :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">
                 {{ payload.language || 'Unknown' }}
@@ -30,8 +30,9 @@
                     <i-mdi-play v-else class="w-5 h-5" />
                 </button>
                 <div class="flex-1">
-                    <div class="text-[10px] uppercase font-bold tracking-widest opacity-50 mb-0.5">Recording</div>
-                    <div class="text-[11px] font-mono opacity-70 truncate">{{ prediction.src_callid }}.wav</div>
+                    <div class="text-[10px] uppercase font-bold tracking-widest mb-0.5"
+                        :class="isDarkMode ? 'text-gray-500' : 'text-gray-400'">Recording</div>
+                    <div class="text-[11px] font-mono truncate" :class="isDarkMode ? 'text-gray-400' : 'text-gray-500'">{{ prediction.src_callid }}.wav</div>
                 </div>
                 <!-- Visualizer Mockup -->
                 <div class="hidden md:flex items-center gap-0.5 h-6">
