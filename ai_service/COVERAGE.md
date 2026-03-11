@@ -1,16 +1,16 @@
 # 📊 Code Coverage Report - AI Service
 
 **Branch:** rogendo_test
-**Commit:** [\`1241120\`](https://github.com/openchlai/ai/commit/1241120234221bad4c20365bedcb9b8e2e6a8bb9)
-**Generated:** 2026-02-02 09:01:09 UTC
+**Commit:** [\`1c0d2ee\`](https://github.com/openchlai/ai/commit/1c0d2eee93a4c6f6dd040cdc6004ed1171ff43f9)
+**Generated:** 2026-03-11 13:41:43 UTC
 **Python Version:** 3.12
-**Workflow:** [\`21583446010\`](https://github.com/openchlai/ai/actions/runs/21583446010)
+**Workflow:** [\`22955169784\`](https://github.com/openchlai/ai/actions/runs/22955169784)
 
 ## 🎯 Coverage Summary
 
-![Coverage](https://img.shields.io/badge/Coverage-83%25-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-81%25-brightgreen)
 
-**Coverage:** 83%
+**Coverage:** 81%
 
 ## 📈 Detailed Coverage Report
 
@@ -20,6 +20,7 @@ Name                                            Stmts   Miss  Cover   Missing
 app/__init__.py                                     1      0   100%
 app/api/__init__.py                                 0      0   100%
 app/api/agent_feedback_routes.py                   93      0   100%
+app/api/attention_fusion_routes.py                109     59    46%   92-96, 103-104, 114-133, 147-154, 160-165, 171-176, 182-187, 197-200, 206-219, 231-236
 app/api/audio_routes.py                           282     17    94%   56, 133, 379, 480, 482, 490, 495, 499-500, 518-538, 595
 app/api/call_session_routes.py                    224     14    94%   14-15, 210-237, 403, 422
 app/api/classifier_route.py                       105      0   100%
@@ -34,7 +35,7 @@ app/api/translator_routes.py                       77      0   100%
 app/api/whisper_routes.py                         109      1    99%   74
 app/celery_app.py                                  20      6    70%   12-25
 app/config/__init__.py                              0      0   100%
-app/config/settings.py                            173      0   100%
+app/config/settings.py                            175      0   100%
 app/core/__init__.py                                0      0   100%
 app/core/celery_monitor.py                         61      0   100%
 app/core/enhanced_processing_manager.py            75      0   100%
@@ -49,11 +50,12 @@ app/core/text_chunker.py                          156     15    90%   70-72, 77-
 app/db/models.py                                   18      0   100%
 app/db/repositories/feedback_repository.py         77      0   100%
 app/db/session.py                                  22      0   100%
-app/main.py                                       135     26    81%   64-65, 75-77, 88-89, 95, 110-113, 127-128, 185, 252-253, 281-302
+app/main.py                                       136     26    81%   64-65, 75-77, 88-89, 95, 110-113, 127-128, 186, 259-260, 288-309
 app/model_scripts/__init__.py                       7      0   100%
+app/model_scripts/attention_fusion_model.py       168    107    36%   27-29, 38-39, 42-46, 73-97, 102-126, 194-196, 210-253, 262, 265, 283-293, 305-324, 340-349, 369-392, 403
 app/model_scripts/audio_processing.py               0      0   100%
 app/model_scripts/classifier_model.py             302     32    89%   20-28, 31-47, 101-102, 262-275, 505
-app/model_scripts/model_loader.py                 249     81    67%   16-18, 24-26, 32-34, 40-42, 48-50, 56-58, 64-66, 89-125, 177, 195, 202-203, 223-224, 260-261, 270-274, 303-307, 319-323, 331-344, 395, 410, 421
+app/model_scripts/model_loader.py                 262     86    67%   16-18, 24-26, 32-34, 40-42, 48-50, 56-58, 64-66, 89-125, 181, 199, 206-207, 227-228, 264-265, 274-278, 307-311, 323-327, 338-342, 350-363, 414, 429, 440
 app/model_scripts/ner_model.py                    161     36    78%   14-16, 83-103, 120-123, 136, 163-165, 193-197, 201, 224-226, 260-261
 app/model_scripts/qa_model.py                     155     54    65%   47-54, 60-66, 94-127, 134-158, 226-228, 259-260
 app/model_scripts/summarizer_model.py             163      4    98%   213, 240-241, 282
@@ -75,14 +77,14 @@ app/streaming/websocket_server.py                  57      0   100%
 app/tasks/__init__.py                               0      0   100%
 app/tasks/audio_tasks.py                          510    450    12%   28-167, 197-198, 209-418, 450-473, 513-1035, 1059-1087, 1103, 1109-1143, 1197-1305, 1309-1311
 app/tasks/health_tasks.py                          11      0   100%
-app/tasks/model_tasks.py                          300     20    93%   34-59, 67, 559
+app/tasks/model_tasks.py                          371     82    78%   34-59, 67, 559, 669-676, 685-709, 715-737, 743-764, 770-791
 app/utils/__init__.py                               2      0   100%
 app/utils/audio_utils.py                            0      0   100%
 app/utils/mode_detector.py                         16      0   100%
 app/utils/scp_audio_downloader.py                 232     22    91%   45, 51, 124-126, 138-140, 239-241, 353, 360-361, 385, 438, 546-555
 app/utils/text_utils.py                           268     20    93%   90-91, 158-169, 186, 241-242, 302-316, 357-358, 560
 -----------------------------------------------------------------------------
-TOTAL                                            7876   1346    83%
+TOTAL                                            8240   1579    81%
 ```
 
 ---
