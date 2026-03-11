@@ -160,9 +160,13 @@ class ModelLoader:
             "qa": {
                 "required": ["torch", "transformers", "numpy"],
                 "description": "QA scoring"
+            },
+            "attention_fusion": {
+                "required": ["torch", "transformers", "numpy"],
+                "description": "Unified multi-task model (NER + Classification + QA)"
             }
         }
-        
+
         # Initialize model status for all expected models
         for model_name in self.model_dependencies.keys():
             self.model_status[model_name] = ModelStatus(model_name)
@@ -326,7 +330,22 @@ class ModelLoader:
                     logger.error(f"❌ QA model failed to load: {model_status.error}")
                 model_status.load_time = datetime.now()
                 return
-            
+
+            if model_name == "attention_fusion":
+                from .attention_fusion_model import attention_fusion_model
+                success = attention_fusion_model.load()
+                if success:
+                    model_status.loaded = True
+                    model_status.error = None
+                    model_status.model_info = attention_fusion_model.get_model_info()
+                    self.models[model_name] = attention_fusion_model
+                    logger.info("✅ Attention Fusion model loaded successfully")
+                else:
+                    model_status.error = attention_fusion_model.error or "Failed to load Attention Fusion model"
+                    logger.error(f"❌ Attention Fusion model failed to load: {model_status.error}")
+                model_status.load_time = datetime.now()
+                return
+
             # If we get here, the model isn't implemented yet
             model_status.error = f"Model loading implementation pending (dependencies available)"
             model_status.load_time = datetime.now()

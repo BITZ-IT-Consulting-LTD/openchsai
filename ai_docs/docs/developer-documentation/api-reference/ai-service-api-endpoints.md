@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-http://localhost:8123
+http://localhost:8125
 ```
 
 ## Authentication
@@ -25,21 +25,40 @@ include_translation: "true" (optional)
 include_classification: "true" (optional)
 ```
 
+**Parameters:**
+- `audio` (File, required): Audio file (WAV, MP3, FLAC, M4A, OGG, WebM). Max 100MB.
+- `language` (String, optional): Language code, default: auto-detect
+- `include_translation` (Boolean, optional): Include translation, default: true
+- `include_insights` (Boolean, optional): Include risk insights, default: true
+- `background` (Boolean, optional): Process asynchronously, default: true
+
 **Example:**
 ```bash
-curl -X POST http://localhost:8123/audio/process \
+curl -X POST http://localhost:8125/audio/process \
   -F "audio=@call_recording.wav" \
   -F "language=sw" \
-  -F "include_translation=true"
+  -F "include_translation=true" \
+  -F "include_insights=true" \
+  -F "background=true"
 ```
 
-**Response:**
+**Response (202 Accepted — Asynchronous):**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "queued",
+  "message": "Audio processing started. Check status at /audio/task/{task_id}",
+  "estimated_time": "15-45 seconds",
+  "status_endpoint": "/audio/task/550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Completed Task Result (from `/audio/task/{task_id}`):**
 ```json
 {
   "audio_info": {
     "filename": "call_recording.wav",
     "file_size_mb": 2.3,
-    "duration_seconds": 127,
     "language_specified": "sw",
     "processing_time": 23.4
   },
@@ -49,24 +68,27 @@ curl -X POST http://localhost:8123/audio/process \
     "PERSON": ["Maria Wanjiku"],
     "LOC": ["Nairobi", "Kibera"],
     "ORG": ["Kenyatta Hospital"],
-    "AGE": ["12 years old"]
+    "DATE": ["2025-01-15"]
   },
   "classification": {
     "main_category": "child_protection",
     "sub_category": "physical_abuse",
     "priority": "high",
-    "confidence": 0.94
+    "confidence": 0.94,
+    "intervention": "immediate_action_required"
+  },
+  "qa_scores": {
+    "empathy_score": 0.87,
+    "professionalism_score": 0.92,
+    "overall_quality": 0.86
   },
   "summary": "Emergency child protection case requiring immediate intervention",
   "insights": {
     "risk_assessment": {
       "risk_level": "high",
       "urgency": "immediate",
-      "recommended_actions": [
-        "immediate_intervention",
-        "contact_child_services",
-        "notify_supervisor"
-      ]
+      "priority": "urgent",
+      "confidence": 0.94
     }
   }
 }
@@ -75,13 +97,20 @@ curl -X POST http://localhost:8123/audio/process \
 ---
 
 ### Streaming Audio Processing
-Process audio with real-time progress updates.
+Process audio with real-time progress updates via Server-Sent Events (SSE).
 
 **Endpoint:** `POST /audio/process-stream`
 
-**Request:** Same as `/audio/process`
+**Request:** Same multipart form data as `/audio/process`
 
-**Response:** Server-Sent Events stream
+**Example:**
+```bash
+curl -X POST http://localhost:8125/audio/process-stream \
+  -F "audio=@call_recording.wav" \
+  -F "language=sw"
+```
+
+**Response:** `text/event-stream` (Server-Sent Events)
 ```
 event: transcription_progress
 data: {"progress": 25, "status": "processing"}
@@ -97,29 +126,50 @@ data: {"text": "Translated text..."}
 
 event: classification_complete
 data: {"category": "child_protection", "risk_level": "high"}
+
+event: complete
+data: {"status": "completed", "task_id": "550e8400-..."}
 ```
 
 ---
 
 ### Quick Audio Analysis
-Faster analysis with essential features only.
+Faster analysis with transcription, classification, and summary — without full translation or detailed insights.
 
 **Endpoint:** `POST /audio/analyze`
 
-**Request:** Multipart form data
-```
-audio: <binary audio file>
-language: "sw"
+**Parameters:**
+- `audio` (File, required): Audio file. Max 50MB.
+- `language` (String, optional): Language code or `auto`
+- `background` (Boolean, optional): Process asynchronously, default: true
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/audio/analyze \
+  -F "audio=@call_recording.wav" \
+  -F "language=sw"
 ```
 
-**Response:**
+**Response (202 Accepted — Asynchronous):**
+```json
+{
+  "task_id": "analyze-abc123",
+  "status": "queued",
+  "message": "Quick analysis started",
+  "estimated_time": "10-20 seconds",
+  "status_endpoint": "/audio/task/analyze-abc123"
+}
+```
+
+**Completed Result:**
 ```json
 {
   "transcript": "Brief transcript...",
-  "language_detected": "sw",
-  "duration": 127,
-  "risk_level": "high",
-  "processing_time": 8.2
+  "summary": "Brief summary of the content...",
+  "main_category": "child_protection",
+  "priority": "high",
+  "risk_level": "medium",
+  "processing_time": 12.5
 }
 ```
 
@@ -130,15 +180,21 @@ Check status of async audio processing task.
 
 **Endpoint:** `GET /audio/task/{task_id}`
 
+**Example:**
+```bash
+curl http://localhost:8125/audio/task/550e8400-e29b-41d4-a716-446655440000
+```
+
 **Response:**
 ```json
 {
-  "task_id": "task_abc123",
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "processing",
-  "progress": 65,
-  "current_step": "translation",
-  "estimated_completion": "2025-09-26T14:27:00Z",
-  "result": null
+  "progress": 0.65,
+  "current_step": "Extracting entities...",
+  "results": null,
+  "created_at": "2024-01-19T10:30:00Z",
+  "completed_at": null
 }
 ```
 
@@ -147,6 +203,63 @@ Check status of async audio processing task.
 - `processing` - Currently processing
 - `completed` - Finished successfully
 - `failed` - Processing failed
+
+---
+
+### Get Active Tasks
+Get list of all currently active audio processing tasks.
+
+**Endpoint:** `GET /audio/tasks/active`
+
+**Query Parameters:**
+- `limit` (optional): Maximum number of tasks to return, default: 50
+- `status` (optional): Filter by status (`processing`, `queued`)
+
+**Example:**
+```bash
+curl http://localhost:8125/audio/tasks/active?limit=10
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "active_tasks": [
+    {
+      "task_id": "550e8400-e29b-41d4-a716-446655440000",
+      "status": "processing",
+      "progress": 0.65,
+      "current_step": "Extracting entities...",
+      "filename": "call.wav",
+      "created_at": "2024-01-19T10:30:00Z",
+      "elapsed_time": 12.5
+    }
+  ],
+  "total_active": 1,
+  "queue_length": 0
+}
+```
+
+---
+
+### Cancel Task
+Cancel an active task or delete task results.
+
+**Endpoint:** `DELETE /audio/task/{task_id}`
+
+**Example:**
+```bash
+curl -X DELETE http://localhost:8125/audio/task/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Task cancelled successfully",
+  "task_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
 
 ---
 
@@ -166,7 +279,7 @@ task: "transcribe" (or "translate" for translate-to-English)
 
 **Example:**
 ```bash
-curl -X POST http://localhost:8123/whisper/transcribe \
+curl -X POST http://localhost:8125/whisper/transcribe \
   -F "audio=@recording.wav" \
   -F "language=sw" \
   -F "task=transcribe"
@@ -175,7 +288,8 @@ curl -X POST http://localhost:8123/whisper/transcribe \
 **Response:**
 ```json
 {
-  "text": "Msichana mdogo ana miaka kumi na mbili, yupo katika hatari...",
+  "status": "success",
+  "transcript": "Msichana mdogo ana miaka kumi na mbili, yupo katika hatari...",
   "language": "sw",
   "confidence": 0.94,
   "segments": [
@@ -200,13 +314,25 @@ Get detailed word-level timestamps.
 **Endpoint:** `POST /whisper/transcribe-detailed`
 
 **Request:** Same as `/whisper/transcribe` plus:
-```
-word_timestamps: "true"
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `audio` | file | Yes | Audio file |
+| `language` | string | No | Language code |
+| `word_timestamps` | boolean | No | Enable word-level timestamps, default: false |
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/whisper/transcribe-detailed \
+  -F "audio=@recording.wav" \
+  -F "language=sw" \
+  -F "word_timestamps=true"
 ```
 
 **Response:**
 ```json
 {
+  "status": "success",
   "text": "Full transcription...",
   "words": [
     {
@@ -221,7 +347,8 @@ word_timestamps: "true"
       "end": 1.3,
       "confidence": 0.94
     }
-  ]
+  ],
+  "processing_time": 9.1
 }
 ```
 
@@ -243,15 +370,22 @@ Translate between Swahili and English.
 }
 ```
 
+**Example:**
+```bash
+curl -X POST http://localhost:8125/translate/ \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Msichana mdogo ana miaka kumi na mbili", "source_language": "sw", "target_language": "en"}'
+```
+
 **Response:**
 ```json
 {
+  "status": "success",
   "original_text": "Msichana mdogo ana miaka kumi na mbili",
   "translated_text": "A young girl is twelve years old",
   "source_language": "sw",
   "target_language": "en",
-  "confidence": 0.92,
-  "model_version": "v1.2.0"
+  "confidence": 0.92
 }
 ```
 
@@ -274,9 +408,17 @@ Translate multiple texts at once.
 }
 ```
 
+**Example:**
+```bash
+curl -X POST http://localhost:8125/translate/batch \
+  -H "Content-Type: application/json" \
+  -d '{"texts": ["Msichana mdogo ana hatari", "Anahitaji msaada haraka"], "source_language": "sw", "target_language": "en"}'
+```
+
 **Response:**
 ```json
 {
+  "status": "success",
   "translations": [
     {
       "original": "Msichana mdogo ana hatari",
@@ -308,14 +450,21 @@ Extract entities from text.
 }
 ```
 
+**Example:**
+```bash
+curl -X POST http://localhost:8125/ner/extract \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Maria Wanjiku lives in Nairobi near Kenyatta Hospital. She is 12 years old."}'
+```
+
 **Response:**
 ```json
 {
+  "status": "success",
   "entities": {
-    "PERSON": ["Maria Wanjiku"],
-    "LOC": ["Nairobi"],
-    "ORG": ["Kenyatta Hospital"],
-    "AGE": ["12 years old"]
+    "PERSON": [{"text": "Maria Wanjiku", "start": 0, "end": 13}],
+    "LOC": [{"text": "Nairobi", "start": 23, "end": 30}],
+    "ORG": [{"text": "Kenyatta Hospital", "start": 36, "end": 53}]
   },
   "entity_details": [
     {
@@ -347,22 +496,27 @@ Classify case category and urgency.
 ```json
 {
   "text": "Child reports physical abuse from caregiver. Immediate danger.",
-  "return_probabilities": true
+  "threshold": 0.5
 }
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/classifier/classify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Child reports physical abuse from caregiver. Immediate danger.", "threshold": 0.5}'
 ```
 
 **Response:**
 ```json
 {
-  "main_category": "child_protection",
-  "sub_category": "physical_abuse",
-  "priority": "critical",
-  "confidence": 0.96,
-  "all_probabilities": {
-    "child_protection": 0.96,
-    "mental_health": 0.02,
-    "education": 0.01,
-    "other": 0.01
+  "status": "success",
+  "classification": {
+    "main_category": "child_protection",
+    "main_category_confidence": 0.96,
+    "sub_category": "physical_abuse",
+    "priority": "critical",
+    "intervention_type": "immediate_intervention"
   }
 }
 ```
@@ -378,20 +532,118 @@ Generate summary of case details.
 ```json
 {
   "text": "Long case description with multiple paragraphs...",
-  "max_length": 100,
-  "min_length": 30
+  "max_length": 150,
+  "min_length": 50
 }
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/summarizer/summarize \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Long transcript here...", "max_length": 150, "min_length": 50}'
 ```
 
 **Response:**
 ```json
 {
+  "status": "success",
   "summary": "12-year-old girl experiencing abuse. Immediate intervention required. Family support needed.",
-  "original_length": 487,
   "summary_length": 82,
   "compression_ratio": 0.17
 }
 ```
+
+---
+
+### Quality Assurance Scoring
+Evaluate helpline call quality across standardized metrics.
+
+**Endpoint:** `POST /qa/evaluate`
+
+**Request:**
+```json
+{
+  "transcript": "Agent: Good afternoon, this is the 116 helpline...",
+  "threshold": 0.5,
+  "return_raw": false
+}
+```
+
+**Parameters:**
+- `transcript` (string, required): Call transcript text
+- `threshold` (float, optional): Classification threshold, default: 0.5
+- `return_raw` (boolean, optional): Include raw probability scores, default: false
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/qa/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{"transcript": "Agent: Good afternoon...", "threshold": 0.5}'
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "evaluations": {
+    "opening": [
+      {"metric": "used_call_protocol", "prediction": true, "passed": true, "score": 0.87}
+    ],
+    "listening": [
+      {"metric": "active_listening", "prediction": true, "passed": true, "score": 0.92}
+    ],
+    "closing": [
+      {"metric": "proper_closure", "prediction": true, "passed": true, "score": 0.95}
+    ]
+  },
+  "processing_time": 0.43,
+  "model_info": {
+    "model_path": "openchs/qa-helpline-distilbert-v1",
+    "device": "cuda"
+  },
+  "timestamp": "2026-01-20T10:30:00Z"
+}
+```
+
+---
+
+### QA Model Info
+Get live model status and metadata.
+
+**Endpoint:** `GET /qa/info`
+
+**Example:**
+```bash
+curl http://localhost:8125/qa/info
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "model": "openchs/qa-helpline-distilbert-v1",
+  "loaded": true,
+  "device": "cuda",
+  "load_time_seconds": 4.2,
+  "max_input_length": 512,
+  "metrics_evaluated": 17
+}
+```
+
+---
+
+### QA Demo
+Run a sample transcript through the QA model for testing.
+
+**Endpoint:** `POST /qa/demo`
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/qa/demo
+```
+
+**Response:** Same structure as `/qa/evaluate` using a canonical sample transcript.
 
 ---
 
@@ -401,6 +653,11 @@ Generate summary of case details.
 Basic health check.
 
 **Endpoint:** `GET /health`
+
+**Example:**
+```bash
+curl http://localhost:8125/health
+```
 
 **Response:**
 ```json
@@ -416,6 +673,11 @@ Basic health check.
 Comprehensive system status.
 
 **Endpoint:** `GET /health/detailed`
+
+**Example:**
+```bash
+curl http://localhost:8125/health/detailed
+```
 
 **Response:**
 ```json
@@ -439,9 +701,10 @@ Comprehensive system status.
     },
     "models": {
       "whisper": "loaded",
-      "translation": "loaded",
+      "translator": "loaded",
       "ner": "loaded",
-      "classifier": "loaded"
+      "classifier": "loaded",
+      "summarizer": "loaded"
     }
   },
   "performance": {
@@ -459,31 +722,21 @@ Check AI model loading status.
 
 **Endpoint:** `GET /health/models`
 
+**Example:**
+```bash
+curl http://localhost:8125/health/models
+```
+
 **Response:**
 ```json
 {
+  "status": "success",
   "models": {
-    "whisper": {
-      "loaded": true,
-      "version": "large-v3-turbo",
-      "memory_usage_mb": 3072,
-      "supported_languages": 99,
-      "load_time_seconds": 12.3
-    },
-    "translation": {
-      "loaded": true,
-      "version": "v1.2.0",
-      "language_pairs": ["sw-en", "en-sw"]
-    },
-    "ner": {
-      "loaded": true,
-      "model": "en_core_web_md",
-      "entities": ["PERSON", "LOC", "ORG", "DATE", "TIME"]
-    },
-    "classifier": {
-      "loaded": true,
-      "categories": ["child_protection", "mental_health", "education", "health"]
-    }
+    "whisper": "loaded",
+    "translator": "loaded",
+    "ner": "loaded",
+    "classifier": "loaded",
+    "summarizer": "loaded"
   }
 }
 ```
@@ -495,15 +748,29 @@ Check processing queue status.
 
 **Endpoint:** `GET /audio/queue/status`
 
+**Example:**
+```bash
+curl http://localhost:8125/audio/queue/status
+```
+
 **Response:**
 ```json
 {
-  "queue_length": 5,
-  "active_tasks": 2,
-  "completed_today": 147,
-  "failed_today": 3,
-  "avg_processing_time_seconds": 23.4,
-  "estimated_wait_time_seconds": 120
+  "status": "healthy",
+  "queue": {
+    "total_tasks": 5,
+    "queued": 3,
+    "processing": 2,
+    "completed_today": 245,
+    "failed_today": 2,
+    "average_wait_time": 8.5,
+    "average_processing_time": 12.3
+  },
+  "workers": {
+    "active_workers": 4,
+    "idle_workers": 2,
+    "total_capacity": 6
+  }
 }
 ```
 
@@ -513,6 +780,11 @@ Check processing queue status.
 Check Celery worker status.
 
 **Endpoint:** `GET /audio/workers/status`
+
+**Example:**
+```bash
+curl http://localhost:8125/audio/workers/status
+```
 
 **Response:**
 ```json
@@ -540,6 +812,11 @@ Check Celery worker status.
 List all available AI models.
 
 **Endpoint:** `GET /models`
+
+**Example:**
+```bash
+curl http://localhost:8125/models
+```
 
 **Response:**
 ```json
@@ -569,6 +846,11 @@ List supported transcription languages.
 
 **Endpoint:** `GET /languages`
 
+**Example:**
+```bash
+curl http://localhost:8125/languages
+```
+
 **Response:**
 ```json
 {
@@ -589,6 +871,352 @@ List supported transcription languages.
     }
   ],
   "total_count": 99
+}
+```
+
+---
+
+## Call Session Endpoints
+
+Real-time call tracking and progressive analysis for live helpline calls.
+
+**Base Path:** `/api/v1/calls`
+
+### Get All Active Calls
+**Endpoint:** `GET /api/v1/calls/active`
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/calls/active
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "active_calls": [
+    {
+      "call_id": "1705669200.1",
+      "caller_id": "+254712345678",
+      "start_time": "2026-01-20T10:30:00Z",
+      "last_activity": "2026-01-20T10:34:00Z",
+      "duration": 245,
+      "status": "in_progress",
+      "segment_count": 12
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### Get Call Details
+**Endpoint:** `GET /api/v1/calls/{call_id}`
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/calls/1705669200.1
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "call": {
+    "call_id": "1705669200.1",
+    "caller_id": "+254712345678",
+    "start_time": "2026-01-20T10:30:00Z",
+    "end_time": "2026-01-20T10:35:00Z",
+    "duration": 300,
+    "transcript": "...",
+    "translation": "...",
+    "classification": {},
+    "entities": {}
+  }
+}
+```
+
+---
+
+### Get Call Transcript
+Get the full transcript for a call, optionally with segments.
+
+**Endpoint:** `GET /api/v1/calls/{call_id}/transcript`
+
+**Query Parameters:**
+- `include_segments` (boolean, optional): Include timestamped segments, default: false
+
+**Example:**
+```bash
+curl "http://localhost:8125/api/v1/calls/1705669200.1/transcript?include_segments=true"
+```
+
+---
+
+### Get Call Segments
+Get transcript segments with speaker diarization and timestamps.
+
+**Endpoint:** `GET /api/v1/calls/{call_id}/segments`
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/calls/1705669200.1/segments
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "segments": [
+    {
+      "segment_id": 1,
+      "start_time": 0.0,
+      "end_time": 5.2,
+      "text": "Habari, hii ni simu ya dharura...",
+      "translation": "Hello, this is an emergency call...",
+      "speaker": "caller"
+    }
+  ]
+}
+```
+
+---
+
+### Get Progressive Analysis
+Get real-time progressive AI analysis for an active call.
+
+**Endpoint:** `GET /api/v1/calls/{call_id}/progressive-analysis`
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/calls/1705669200.1/progressive-analysis
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "call_id": "1705669200.1",
+  "analysis": {
+    "current_classification": {
+      "main_category": "child_protection",
+      "confidence": 0.87,
+      "updated_at": "2026-01-20T10:34:15Z"
+    },
+    "entities_found": {
+      "PERSON": ["Maria"],
+      "LOC": ["Nairobi"]
+    },
+    "qa_live_scores": {
+      "empathy_score": 0.85,
+      "professionalism_score": 0.91
+    }
+  }
+}
+```
+
+---
+
+### Get Classification Evolution
+Track how call classification changes throughout the conversation.
+
+**Endpoint:** `GET /api/v1/calls/{call_id}/classification-evolution`
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/calls/1705669200.1/classification-evolution
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "call_id": "1705669200.1",
+  "evolution": [
+    {
+      "timestamp": "2026-01-20T10:30:15Z",
+      "segment": 1,
+      "classification": {"main_category": "unknown", "confidence": 0.4}
+    },
+    {
+      "timestamp": "2026-01-20T10:31:00Z",
+      "segment": 4,
+      "classification": {"main_category": "child_protection", "confidence": 0.82}
+    }
+  ]
+}
+```
+
+---
+
+### End Call Session
+Manually end a call session and trigger post-call processing.
+
+**Endpoint:** `POST /api/v1/calls/{call_id}/end`
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/api/v1/calls/1705669200.1/end
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Call session ended. Post-call processing triggered.",
+  "call_id": "1705669200.1",
+  "task_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+---
+
+## Agent Feedback Endpoints
+
+Allow agents to rate and provide feedback on AI model predictions for performance monitoring and fine-tuning.
+
+**Base Path:** `/api/v1/agent-feedback`
+
+### Submit or Update Feedback
+**Endpoint:** `POST /api/v1/agent-feedback/update`
+
+**Request Body:**
+```json
+{
+  "call_id": "call_123456",
+  "task": "classification",
+  "feedback": 4,
+  "reason": "Accurate main category, minor issue with sub-category"
+}
+```
+
+**Parameters:**
+- `call_id` (string, required): Unique call identifier
+- `task` (string, required): One of: `transcription`, `classification`, `ner`, `summarization`, `translation`, `qa`
+- `feedback` (integer, required): Rating from 1 (poor) to 5 (excellent)
+- `reason` (string, optional): Explanation for the rating
+
+**Example:**
+```bash
+curl -X POST http://localhost:8125/api/v1/agent-feedback/update \
+  -H "Content-Type: application/json" \
+  -d '{
+    "call_id": "call_123456",
+    "task": "classification",
+    "feedback": 4,
+    "reason": "Accurate main category, minor issue with sub-category"
+  }'
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 1543,
+  "call_id": "call_123456",
+  "task": "classification",
+  "prediction": {
+    "main_category": "child_protection",
+    "sub_category": "physical_abuse",
+    "priority": "high"
+  },
+  "feedback": 4,
+  "reason": "Accurate main category, minor issue with sub-category",
+  "created_at": "2026-01-20T10:30:00",
+  "updated_at": "2026-01-20T10:35:00"
+}
+```
+
+---
+
+### Get Feedback for a Call
+**Endpoint:** `GET /api/v1/agent-feedback/call/{call_id}`
+
+**Query Parameters:**
+- `task` (string, optional): Filter by specific task
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/agent-feedback/call/call_123456
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1543,
+    "call_id": "call_123456",
+    "task": "classification",
+    "feedback": 4,
+    "reason": "Good overall accuracy",
+    "created_at": "2026-01-20T10:30:00"
+  },
+  {
+    "id": 1544,
+    "call_id": "call_123456",
+    "task": "ner",
+    "feedback": 5,
+    "reason": "All entities correctly identified",
+    "created_at": "2026-01-20T10:30:05"
+  }
+]
+```
+
+---
+
+### Get Feedback Statistics
+**Endpoint:** `GET /api/v1/agent-feedback/statistics`
+
+**Query Parameters:**
+- `task` (string, optional): Filter by specific task
+- `days` (integer, optional): Number of days to look back, default: 30
+
+**Example:**
+```bash
+curl "http://localhost:8125/api/v1/agent-feedback/statistics?days=30"
+```
+
+**Response (200 OK):**
+```json
+{
+  "period_days": 30,
+  "tasks": {
+    "classification": {
+      "total_predictions": 358,
+      "rated_predictions": 42,
+      "rating_coverage": 0.12,
+      "average_rating": 4.1,
+      "min_rating": 2,
+      "max_rating": 5
+    },
+    "transcription": {
+      "total_predictions": 358,
+      "rated_predictions": 28,
+      "rating_coverage": 0.08,
+      "average_rating": 3.9,
+      "min_rating": 3,
+      "max_rating": 5
+    }
+  }
+}
+```
+
+---
+
+### Agent Feedback Health Check
+**Endpoint:** `GET /api/v1/agent-feedback/health`
+
+**Example:**
+```bash
+curl http://localhost:8125/api/v1/agent-feedback/health
+```
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "timestamp": "2026-01-20T10:30:00Z"
 }
 ```
 
@@ -632,20 +1260,37 @@ See [API Rate Limiting](api-rate-limiting-throttling.md) for details.
 
 ```python
 import requests
+import time
 
-# Process audio file
+BASE_URL = "http://localhost:8125"
+
+# Submit audio for async processing
 with open('call_recording.wav', 'rb') as audio:
     response = requests.post(
-        'http://localhost:8123/audio/process',
+        f'{BASE_URL}/audio/process',
         files={'audio': audio},
         data={
             'language': 'sw',
             'include_translation': 'true',
-            'include_classification': 'true'
+            'include_insights': 'true',
+            'background': 'true'
         }
     )
 
-result = response.json()
+task = response.json()
+task_id = task['task_id']
+print(f"Task submitted: {task_id}")
+
+# Poll for completion
+while True:
+    status_response = requests.get(f'{BASE_URL}/audio/task/{task_id}')
+    status = status_response.json()
+    if status['status'] == 'completed':
+        result = status['results']
+        break
+    elif status['status'] == 'failed':
+        raise Exception("Processing failed")
+    time.sleep(2)
 
 # Extract results
 transcript = result['transcript']
@@ -656,15 +1301,15 @@ print(f"Risk Level: {risk_level}")
 print(f"Transcript: {transcript}")
 print(f"Translation: {translation}")
 
-# Additional analysis
+# Additional NER analysis
 entities_response = requests.post(
-    'http://localhost:8123/ner/extract',
+    f'{BASE_URL}/ner/extract',
     json={'text': translation}
 )
 
 entities = entities_response.json()['entities']
-print(f"People mentioned: {entities['PERSON']}")
-print(f"Locations: {entities['LOC']}")
+print(f"People mentioned: {entities.get('PERSON', [])}")
+print(f"Locations: {entities.get('LOC', [])}")
 ```
 
 ---
@@ -689,4 +1334,6 @@ print(f"Locations: {entities['LOC']}")
    - Check `/audio/queue/status` before submitting
    - Implement retry logic for queue-full errors
 
-For integration examples, see [Integrating with External Systems](../integrations-extensions/integrating-with-external-systems.md).
+5. **Agent feedback:**
+   - Submit feedback after each processed call using `/api/v1/agent-feedback/update`
+   - Monitor model quality trends via `/api/v1/agent-feedback/statistics`

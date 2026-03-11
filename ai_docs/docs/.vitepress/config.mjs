@@ -112,7 +112,7 @@ export default defineConfig({
                         items: [
                             { text: 'Authentication', link: '/developer-documentation/api-reference/authentication' },
                             { text: 'Helpline API Endpoints', link: '/developer-documentation/api-reference/helpline-api-endpoints' },
-                            { text: 'AI Service API Endpoints', link: '/developer-documentation/api-reference/ai-service-api-endpoints' },
+                            { text: 'AI Service API Endpoints', link: "/ai-services/api-reference.md"},
                             { text: 'API Rate Limiting & Throttling', link: '/developer-documentation/api-reference/api-rate-limiting-throttling' },
                             { text: 'Overview', link: '/developer-documentation/api-reference/overview' },
                             { text: 'Testing Strategy', link: '/developer-documentation/api-reference/testing-strategy.md' }
@@ -138,7 +138,7 @@ export default defineConfig({
                         text: 'Contribution Guide',
                         items: [
                             { text: 'Contribution Guide', link: '/developer-documentation/contribution-guide' },
-                            { text: 'API', link: '/developer-documentation/api.md' }
+                            // { text: 'API', link: '/developer-documentation/api.md' }
                         ]
                     }
                 ]

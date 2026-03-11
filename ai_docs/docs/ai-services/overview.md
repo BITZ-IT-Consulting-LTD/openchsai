@@ -132,7 +132,7 @@ Training emphasizes hands-on use, human-in-the-loop workflows, ethical handling 
 - **Get Started**: [Quick Start Guide](./quick-start.md)
 - **Deploy**: [Docker Compose Setup](./installation/docker-compose.md)
 - **Configure**: [Environment Variables](./configuration/environment-variables.md)
-- **API Docs**: [Audio Processing API](./api-reference/audio-processing.md)
+- **AI APIs**: [AI Processing APIs](./api-reference.md)
 - **Contribute**: [Development Guide](./development/contributing.md)
 
 ---
