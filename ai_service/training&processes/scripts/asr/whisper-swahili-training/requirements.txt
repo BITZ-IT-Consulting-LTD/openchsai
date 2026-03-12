@@ -1,6 +1,6 @@
 # Core ML/Deep Learning Libraries
-torch==2.8.0
-transformers==4.56.2
+torch==2.10.0
+transformers==5.3.0
 datasets==2.21.0
 evaluate==0.4.6
 
@@ -12,7 +12,7 @@ soundfile==0.13.1
 peft==0.17.1
 
 # MLflow and Experiment Tracking
-mlflow==3.4.0
+mlflow==3.5.0
 tensorboard==2.20.0
 wandb==0.22.1
 
