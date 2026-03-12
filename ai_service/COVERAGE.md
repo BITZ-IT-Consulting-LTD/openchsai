@@ -1,10 +1,10 @@
 # 📊 Code Coverage Report - AI Service
 
 **Branch:** rogendo_test
-**Commit:** [\`1c0d2ee\`](https://github.com/openchlai/ai/commit/1c0d2eee93a4c6f6dd040cdc6004ed1171ff43f9)
-**Generated:** 2026-03-11 13:41:43 UTC
+**Commit:** [\`cae4607\`](https://github.com/openchlai/ai/commit/cae460729726c2ca95ec2a4811e8a6e318c818d7)
+**Generated:** 2026-03-12 12:09:38 UTC
 **Python Version:** 3.12
-**Workflow:** [\`22955169784\`](https://github.com/openchlai/ai/actions/runs/22955169784)
+**Workflow:** [\`23000965855\`](https://github.com/openchlai/ai/actions/runs/23000965855)
 
 ## 🎯 Coverage Summary
 
@@ -89,4 +89,4 @@ TOTAL                                            8240   1579    81%
 
 ---
 *Report generated automatically by GitHub Actions*
-*Access this report at: [COVERAGE.md](https://github.com/openchlai/ai/blob/nelson_private3/ai_service/COVERAGE.md)*
+*Access this report at: [COVERAGE.md](https://github.com/openchlai/ai/blob/rogendo_test/ai_service/COVERAGE.md)*
