@@ -1,19 +1,12 @@
 <template>
-  <div 
-    class="space-y-4"
-  >
+  <div class="space-y-4">
     <!-- Header -->
-    <WallboardHeader 
-      :connection-status="connectionClass"
-      :connection-label="connectionLabel"
-      :last-update="lastUpdate"
-      :is-dark-mode="isDarkMode"
-      @toggle-theme="toggleTheme"
-    />
+    <WallboardHeader :connection-status="connectionClass" :connection-label="connectionLabel" :last-update="lastUpdate"
+      :is-dark-mode="isDarkMode" @toggle-theme="toggleTheme" />
 
     <!-- Main Dashboard Grid -->
     <div class="mt-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
-      
+
       <!-- Top Section: Stats Tiles (Full width) -->
       <div class="xl:col-span-12">
         <CasesTiles :tiles="casesTiles" />
@@ -21,15 +14,9 @@
 
       <!-- Bottom Section: Tables (Full width) -->
       <div class="xl:col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <CounsellorsTable 
-          :counsellors="counsellorsWithQueueData"
-          :online-count="onlineCounsellorsCount"
-        />
-        
-        <CallersTable 
-          :callers="callersData"
-          :online-count="onlineCallersCount"
-        />
+        <CounsellorsTable :counsellors="counsellorsWithQueueData" :online-count="onlineCounsellorsCount" />
+
+        <CallersTable :callers="callersData" :online-count="onlineCallersCount" />
       </div>
 
     </div>
@@ -37,248 +24,257 @@
 </template>
 
 <script>
-import { computed, onMounted, onBeforeUnmount, watch, provide } from 'vue'
-import axiosInstance from "@/utils/axios.js"
+  import { computed, onMounted, onBeforeUnmount, watch, provide } from 'vue'
+  import axiosInstance from "@/utils/axios.js"
 
-// Import components
-import WallboardHeader from '@/components/wallboard/WallboardHeader.vue'
-import CasesTiles from '@/components/wallboard/CasesTiles.vue'
-import CounsellorsTable from '@/components/wallboard/CounsellorsTable.vue'
-import CallersTable from '@/components/wallboard/CallersTable.vue'
+  // Import components
+  import WallboardHeader from '@/components/wallboard/WallboardHeader.vue'
+  import CasesTiles from '@/components/wallboard/CasesTiles.vue'
+  import CounsellorsTable from '@/components/wallboard/CounsellorsTable.vue'
+  import CallersTable from '@/components/wallboard/CallersTable.vue'
 
-// Import utilities
-import { useWebSocketConnection } from '@/composables/useWebSocketConnection.js'
-import { useCounsellorData } from '@/composables/useCounsellorData'
-import { useApiData } from '@/composables/useApiData'
-import { formatDuration, getStatusText } from '@/utils/formatters'
-import { useTheme } from '@/composables/useTheme' // ✅ Import shared theme composable
+  // Import utilities
+  import { useRealtimeStore } from '@/stores/realtime'
+  import { useCounsellorData } from '@/composables/useCounsellorData'
+  import { useApiData } from '@/composables/useApiData'
+  import { formatDuration, getStatusText } from '@/utils/formatters'
+  import { useTheme } from '@/composables/useTheme'
 
-const WSHOST = 'wss://demo-openchs.bitz-itc.com:8384/ami/sync?c=-2'
+  export default {
+    name: 'Wallboard',
+    components: {
+      WallboardHeader,
+      CasesTiles,
+      CounsellorsTable,
+      CallersTable
+    },
+    setup() {
+      const { isDarkMode, toggleTheme } = useTheme()
+      const realtimeStore = useRealtimeStore()
 
-export default {
-  name: 'App',
-  components: {
-    WallboardHeader,
-    CasesTiles,
-    CounsellorsTable,
-    CallersTable
-  },
-  setup() {
-    // ✅ Use the SHARED theme composable instead of local state
-    const { isDarkMode, toggleTheme } = useTheme()
-    
-    // Provide theme to all child components
-    provide('isDarkMode', isDarkMode)
-    provide('toggleTheme', toggleTheme)
-    
-    // Use WebSocket composable
-    const {
-      channels,
-      wsReady,
-      lastUpdate,
-      connect,
-      disconnect
-    } = useWebSocketConnection(WSHOST)
-    
-    // Use API data composable
-    const {
-      apiData,
-      fetchCasesData
-    } = useApiData(axiosInstance)
-    
-    // Use counsellor data composable
-    const {
-      counsellorNames,
-      counsellorStats,
-      fetchCounsellorName,
-      fetchCounsellorStats
-    } = useCounsellorData(axiosInstance)
+      // Provide theme to all child components
+      provide('isDarkMode', isDarkMode)
+      provide('toggleTheme', toggleTheme)
 
-    // Cases tiles with real data from API
-    const casesTiles = computed(() => {
-      const stats = apiData.value?.stats || {}
-      
-      const tiles = [
-        { 
-          id: 'ct1', 
-          label: "Today's Answered", 
-          value: stats.calls_today || '0', 
-          variant: 'blue',
-          icon: 'phone'
-        },
-        { 
-          id: 'ct2', 
-          label: "Today's Cases", 
-          value: stats.cases_today || '0', 
-          variant: 'amber',
-          icon: 'folder'
-        },
-        { 
-          id: 'ct3', 
-          label: 'Ongoing Cases', 
-          value: stats.cases_ongoing_total || '0', 
-          variant: 'red',
-          icon: 'alert'
-        },
-        { 
-          id: 'ct4', 
-          label: 'Month Closed', 
-          value: stats.cases_closed_this_month || '0', 
-          variant: 'green',
-          icon: 'check'
-        },
-        { 
-          id: 'ct5', 
-          label: 'Total Calls', 
-          value: stats.calls_total || '0', 
-          variant: 'purple',
-          icon: 'chart'
-        },
-        { 
-          id: 'ct6', 
-          label: 'Total Cases', 
-          value: stats.cases_total || '0', 
-          variant: 'indigo',
-          icon: 'database'
-        }
-      ]
-      
-      return tiles
-    })
+      // Use API data composable
+      const {
+        apiData,
+        wallboardData,
+        fetchCasesData,
+        fetchLiveAgents
+      } = useApiData(axiosInstance)
 
-    // Separate counsellors and callers based on CHAN_CONTEXT
-    const counsellorsWithQueueData = computed(() => {
-      const counsellorChannels = channels.value.filter(ch => {
-        const context = (ch.CHAN_CONTEXT || '').toLowerCase()
-        return context === 'agentlogin'
-      })
+      // Use counsellor data composable
+      const {
+        counsellorNames,
+        counsellorStats,
+        fetchCounsellorName,
+        fetchCounsellorStats
+      } = useCounsellorData(axiosInstance)
 
-      return counsellorChannels.map((ch) => {
-        const extension = ch.CHAN_EXTEN || '--'
-        const name = counsellorNames.value[extension] || 'Unknown'
-        const stats = counsellorStats.value[extension] || { answered: '--', missed: '--', talkTime: '--' }
+      // Cases tiles with real data from API
+      const casesTiles = computed(() => {
+        const stats = apiData.value?.stats || {}
 
-        // Find connected caller by matching bridge IDs
-        let connectedCallerNumber = '--'
-        if (Number(ch.CHAN_STATE_CONNECT) && ch.CHAN_BRIDGE_ID) {
-          const connectedCaller = callersData.value.find(caller => 
-            caller.channelData.CHAN_BRIDGE_ID === ch.CHAN_BRIDGE_ID
-          )
-          if (connectedCaller) {
-            connectedCallerNumber = connectedCaller.callerNumber
+        return [
+          {
+            id: 'ct1',
+            label: "Today's Answered",
+            value: stats.calls_today || '0',
+            variant: 'blue',
+            icon: 'phone'
+          },
+          {
+            id: 'ct2',
+            label: "Today's Cases",
+            value: stats.cases_today || '0',
+            variant: 'amber',
+            icon: 'folder'
+          },
+          {
+            id: 'ct3',
+            label: 'Ongoing Cases',
+            value: stats.cases_ongoing_total || '0',
+            variant: 'red',
+            icon: 'alert'
+          },
+          {
+            id: 'ct4',
+            label: 'Month Closed',
+            value: stats.cases_closed_this_month || '0',
+            variant: 'green',
+            icon: 'check'
+          },
+          {
+            id: 'ct5',
+            label: 'Total Calls',
+            value: stats.calls_total || '0',
+            variant: 'purple',
+            icon: 'chart'
+          },
+          {
+            id: 'ct6',
+            label: 'Total Cases',
+            value: stats.cases_total || '0',
+            variant: 'indigo',
+            icon: 'database'
           }
-        }
-
-        return {
-          id: ch.CHAN_UNIQUEID || ch._uid,
-          extension: extension,
-          name: name,
-          caller: connectedCallerNumber,
-          answered: stats.answered,
-          missed: stats.missed,
-          talkTime: '--',
-          queueStatus: getStatusText(ch),
-          duration: Number(ch.CHAN_STATE_CONNECT) ? formatDuration(ch.CHAN_TS) : '--',
-          isOnline: true,
-          channelData: ch,
-          channel: ch.CHAN_CHAN || '--',
-          vector: ch.CHAN_VECTOR || '--',
-          campaign: ch.CHAN_CAMPAIGN_ID || '--'
-        }
+        ]
       })
-    })
 
-    // Callers data - filtered by DLPN_callcenter context
-    const callersData = computed(() => {
-      return channels.value
-        .filter(ch => {
-          const context = (ch.CHAN_CONTEXT || '').toLowerCase()
-          return context === 'trunk' || context === 'dlpn_callcenter'
+      // Separate counsellors and callers based on CHAN_CONTEXT
+      const counsellorsWithQueueData = computed(() => {
+        const { live, users, live_k, users_k } = wallboardData.value
+
+        const processApiList = (list, k, source) => {
+          if (!list || list.length === 0) return []
+
+          const extIdx = k.exten?.[0] ?? k.extension?.[0] ?? 0
+          const nameIdx = k.contact_fullname?.[0] ?? k.name?.[0] ?? 1
+
+          return list.map(row => {
+            const extension = String(row[extIdx] || '')
+            const name = row[nameIdx] || 'Unknown'
+            return { extension, name, isAvailable: true, source }
+          }).filter(a => a.extension && a.extension !== 'undefined' && a.extension !== 'null')
+        }
+
+        const apiAgents = [
+          ...processApiList(live, live_k, 'live'),
+          ...processApiList(users, users_k, 'users')
+        ]
+
+        // Use global store's agent channels instead of private WS
+        const activeChannels = realtimeStore.agentChannels
+
+        const mergedMap = new Map()
+
+        apiAgents.forEach(a => {
+          const key = String(a.extension)
+          if (!mergedMap.has(key)) {
+            mergedMap.set(key, { ...a, isOnline: true })
+          }
         })
-        .map((ch) => {
+
+        activeChannels.forEach(ch => {
+          const ext = String(ch.CHAN_EXTEN)
+          const existing = mergedMap.get(ext)
+          if (existing) {
+            existing.channelData = ch
+            existing.id = ch.CHAN_UNIQUEID || ch._uid
+          } else {
+            mergedMap.set(ext, {
+              extension: ext,
+              name: counsellorNames.value[ext] || 'User ' + ext,
+              channelData: ch,
+              id: ch.CHAN_UNIQUEID || ch._uid,
+              isOnline: true,
+              isAvailable: true,
+              source: 'websocket'
+            })
+          }
+        })
+
+        return Array.from(mergedMap.values()).map(agent => {
+          const ch = agent.channelData
+          const stats = counsellorStats.value[agent.extension] || { answered: '--', missed: '--', talkTime: '--' }
+
           return {
-            id: ch.CHAN_UNIQUEID || ch._uid,
-            callerNumber: ch.CHAN_CALLERID_NUM || '--',
-            vector: ch.CHAN_VECTOR || '--',
-            waitTime: formatDuration(ch.CHAN_TS),
-            queueStatus: getStatusText(ch),
-            bridgeId: ch.CHAN_BRIDGE_ID || '--',
-            campaign: ch.CHAN_CAMPAIGN_ID || '--',
-            sipCallId: ch.CHAN_SIPCALLID || '--',
+            id: agent.id || `agent-${agent.extension}`,
+            extension: agent.extension,
+            name: agent.name,
+            caller: ch?.CHAN_CALLERID_NUM || agent.callerNumber || '--',
+            answered: stats.answered,
+            missed: stats.missed,
+            talkTime: '--',
+            queueStatus: ch ? getStatusText(ch) : (agent.isAvailable ? 'Available' : 'Paused'),
+            duration: (ch && Number(ch.CHAN_STATE_CONNECT)) ? formatDuration(ch.CHAN_TS) : '--',
             isOnline: true,
             channelData: ch
           }
         })
-    })
-
-    // Count of online counsellors and callers
-    const onlineCounsellorsCount = computed(() => 
-      counsellorsWithQueueData.value.filter(c => c.isOnline).length
-    )
-    
-    const onlineCallersCount = computed(() => 
-      callersData.value.filter(c => c.isOnline).length
-    )
-
-    // Connection status helpers
-    const connectionClass = computed(() => 
-      wsReady.value === 'open' ? 'on' : (wsReady.value === 'connecting' ? 'connecting' : 'off')
-    )
-    
-    const connectionLabel = computed(() => {
-      if (wsReady.value === 'connecting') return 'Connecting...'
-      if (wsReady.value === 'open') return 'Connected'
-      if (wsReady.value === 'error') return 'Error'
-      return 'Disconnected'
-    })
-
-    // Lifecycle
-    onMounted(() => {
-      // Connect to WebSocket
-      connect(channels, fetchCounsellorName, fetchCounsellorStats)
-      
-      // Fetch initial data
-      fetchCasesData()
-      
-      // Refresh data every 5 minutes
-      const dataInterval = setInterval(() => {
-        fetchCasesData()
-      }, 300000)
-      
-      onBeforeUnmount(() => {
-        clearInterval(dataInterval)
-        disconnect()
       })
-    })
 
-    // Watch for data changes
-    watch(() => apiData.value, (newVal) => {
-      console.log('apiData changed:', newVal)
-    })
-    
-    watch(() => channels.value, (newVal) => {
-      console.log('channels changed, count:', newVal.length)
-    })
+      // Callers data - use global store's caller channels
+      const callersData = computed(() => {
+        return realtimeStore.callerChannels.map((ch) => ({
+          id: ch.CHAN_UNIQUEID || ch._uid,
+          callerNumber: ch.CHAN_CALLERID_NUM || '--',
+          vector: ch.CHAN_VECTOR || '--',
+          waitTime: formatDuration(ch.CHAN_TS),
+          queueStatus: getStatusText(ch),
+          bridgeId: ch.CHAN_BRIDGE_ID || '--',
+          campaign: ch.CHAN_CAMPAIGN_ID || '--',
+          sipCallId: ch.CHAN_SIPCALLID || '--',
+          isOnline: true,
+          channelData: ch
+        }))
+      })
 
-    return {
-      // State
-      isDarkMode,
-      
-      // Data
-      casesTiles,
-      counsellorsWithQueueData,
-      onlineCounsellorsCount,
-      callersData,
-      onlineCallersCount,
-      
-      // Connection status
-      connectionClass,
-      connectionLabel,
-      lastUpdate,
-      
-      // Methods
-      toggleTheme // ✅ Now uses shared toggleTheme
+      // Counts
+      const onlineCounsellorsCount = computed(() =>
+        counsellorsWithQueueData.value.filter(c => c.isOnline).length
+      )
+
+      const onlineCallersCount = computed(() =>
+        callersData.value.filter(c => c.isOnline).length
+      )
+
+      // Connection status from global store
+      const connectionClass = computed(() =>
+        realtimeStore.isAmiConnected ? 'on' : (realtimeStore.amiReady === 'connecting' ? 'connecting' : 'off')
+      )
+
+      const connectionLabel = computed(() => {
+        if (realtimeStore.amiReady === 'connecting') return 'Connecting...'
+        if (realtimeStore.isAmiConnected) return 'Connected'
+        if (realtimeStore.amiReady === 'error') return 'Error'
+        return 'Disconnected'
+      })
+
+      const lastUpdate = computed(() => realtimeStore.lastAmiUpdate)
+
+      // Trigger counsellor name/stats fetches when agent channels change
+      watch(
+        () => realtimeStore.agentChannels,
+        (agents) => {
+          agents.forEach(ch => {
+            const ext = ch.CHAN_EXTEN
+            if (ext && ext !== '--') {
+              fetchCounsellorName(ext)
+              fetchCounsellorStats(ext)
+            }
+          })
+        }
+      )
+
+      // Lifecycle
+      onMounted(() => {
+        fetchCasesData()
+        fetchLiveAgents()
+
+        const dataInterval = setInterval(() => {
+          fetchCasesData()
+          fetchLiveAgents()
+        }, 30000)
+
+        onBeforeUnmount(() => {
+          clearInterval(dataInterval)
+        })
+      })
+
+      return {
+        isDarkMode,
+        casesTiles,
+        counsellorsWithQueueData,
+        onlineCounsellorsCount,
+        callersData,
+        onlineCallersCount,
+        connectionClass,
+        connectionLabel,
+        lastUpdate,
+        toggleTheme
+      }
     }
   }
-}
 </script>

@@ -163,7 +163,7 @@ export const useCallStore = defineStore('callStore', {
     // 2. View Call
     async viewCall(uniqueid) {
       try {
-        const { data } = await axiosInstance.get(`/api-proxy/api/calls/${uniqueid}`, {
+        const { data } = await axiosInstance.get(`api/calls/${uniqueid}`, {
           headers: this.getAuthHeaders()
         });
         return data;
@@ -214,6 +214,19 @@ export const useCallStore = defineStore('callStore', {
         return data;
       } catch (err) {
         throw new Error(err.message || 'Failed to fetch pivot report');
+      }
+    },
+
+    // 6. Get Analytics (Stateless)
+    async getAnalytics(params = {}) {
+      try {
+        const { data } = await axiosInstance.get('api/calls/', {
+          params,
+          headers: this.getAuthHeaders()
+        });
+        return data;
+      } catch (err) {
+        throw new Error(err.message || 'Failed to fetch call analytics');
       }
     }
   }
