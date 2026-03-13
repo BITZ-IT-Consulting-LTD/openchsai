@@ -68,6 +68,11 @@
             Table
           </button>
 
+          <button @click="currentView = 'reports'" :class="getViewButtonClass(currentView === 'reports')">
+            <i-mdi-chart-bar class="w-5 h-5" />
+            Reports
+          </button>
+
           <button @click="createCase"
             class="px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm bg-green-600 text-white hover:bg-green-700 shadow-lg active:scale-95">
             <i-mdi-plus-circle class="w-5 h-5" />
@@ -96,8 +101,13 @@
         <CasesTable :cases="casesStore.cases" :cases_k="casesStore.cases_k" @select-case="handleCaseSelect" />
       </div>
 
-      <!-- Pagination Controls -->
-      <Pagination :paginationInfo="casesStore.paginationInfo" :hasNextPage="casesStore.hasNextPage"
+      <!-- Reports view -->
+      <div v-if="currentView === 'reports'">
+        <CustomExplorer endpoint="cases" />
+      </div>
+
+      <!-- Pagination Controls (not shown for Reports view) -->
+      <Pagination v-if="currentView !== 'reports'" :paginationInfo="casesStore.paginationInfo" :hasNextPage="casesStore.hasNextPage"
         :hasPrevPage="casesStore.hasPrevPage" :loading="casesStore.loading" :pageSize="selectedPageSize"
         @prev="goToPrevPage" @next="goToNextPage" @goToPage="goToPage" @changePageSize="changePageSize" />
     </div>
@@ -123,6 +133,7 @@
   import CasesFilter from '@/components/cases/CasesFilter.vue'
   import CaseDetailsPanel from '@/components/cases/CaseDetailsPanel.vue'
   import Pagination from '@/components/base/Pagination.vue'
+  import CustomExplorer from '@/components/reports/CustomExplorer.vue'
 
   const router = useRouter()
   const casesStore = useCaseStore()

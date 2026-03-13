@@ -41,6 +41,11 @@
             SIP Agent
           </button>
 
+          <button @click="activeView = 'reports'" :class="getViewButtonClass(activeView === 'reports')">
+            <i-mdi-chart-bar class="w-5 h-5" />
+            Reports
+          </button>
+
           <button
             @click="refreshCalls"
             :disabled="callsStore.loading"
@@ -88,8 +93,13 @@
         <SipAgentView />
       </div>
 
-      <!-- Pagination Controls (not shown for SIP view) -->
-      <Pagination v-if="activeView !== 'sip'" :paginationInfo="callsStore.paginationInfo"
+      <!-- Reports view -->
+      <div v-if="activeView === 'reports'">
+        <CustomExplorer endpoint="calls" />
+      </div>
+
+      <!-- Pagination Controls (not shown for SIP or Reports view) -->
+      <Pagination v-if="activeView !== 'sip' && activeView !== 'reports'" :paginationInfo="callsStore.paginationInfo"
         :hasNextPage="callsStore.hasNextPage" :hasPrevPage="callsStore.hasPrevPage" :loading="callsStore.loading"
         :pageSize="selectedPageSize" @prev="goToPrevPage" @next="goToNextPage" @goToPage="goToPage"
         @changePageSize="changePageSize" />
@@ -119,6 +129,7 @@ import { useAuthStore } from "@/stores/auth"
 import { useCallDownload } from "@/composables/useCallDownload"
 import { useQaForm } from "@/modules/qa/useQaForm"
 import QaFormDrawer from "@/modules/qa/QaFormDrawer.vue"
+import CustomExplorer from "@/components/reports/CustomExplorer.vue"
 
 // Inject theme
 const isDarkMode = inject('isDarkMode')

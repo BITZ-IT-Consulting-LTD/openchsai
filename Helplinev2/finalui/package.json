@@ -11,12 +11,14 @@
   "dependencies": {
     "@iconify/json": "^2.2.403",
     "axios": "^1.13.1",
+    "chart.js": "^4.5.1",
     "pinia": "^3.0.3",
     "sip.js": "^0.21.2",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3",
     "vue-sonner": "^2.0.9",
-    "vue-toastification": "^2.0.0-rc.5"
+    "vue-toastification": "^2.0.0-rc.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
