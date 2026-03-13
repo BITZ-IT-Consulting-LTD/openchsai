@@ -145,7 +145,8 @@
 
   const statusOptions = [
     { value: '1', label: 'Open' },
-    { value: '2', label: 'Closed' }
+    { value: '2', label: 'Closed' },
+    { value: '3', label: 'Escalated' }
   ]
 
   // Form state

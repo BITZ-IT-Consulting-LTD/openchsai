@@ -61,6 +61,32 @@
                         Disposition
                     </button>
 
+                    <button @click="handleToggleHold"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                        :class="activeCallStore.isOnHold
+                            ? 'bg-amber-500 text-white hover:bg-amber-600'
+                            : 'bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-neutral-700'">
+                        <i-mdi-pause v-if="!activeCallStore.isOnHold" class="w-4 h-4" />
+                        <i-mdi-play v-else class="w-4 h-4" />
+                        {{ activeCallStore.isOnHold ? 'Resume' : 'Hold' }}
+                    </button>
+
+                    <button @click="handleToggleMute"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                        :class="activeCallStore.isMuted
+                            ? 'bg-red-500 text-white hover:bg-red-600'
+                            : 'bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-neutral-700'">
+                        <i-mdi-microphone-off v-if="activeCallStore.isMuted" class="w-4 h-4" />
+                        <i-mdi-microphone v-else class="w-4 h-4" />
+                        {{ activeCallStore.isMuted ? 'Unmute' : 'Mute' }}
+                    </button>
+
+                    <button @click="isTransferOpen = true"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors">
+                        <i-mdi-phone-forward class="w-4 h-4" />
+                        Transfer
+                    </button>
+
                     <button @click="activeCallStore.hangupCall"
                         class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20">
                         <i-mdi-phone-hangup class="w-4 h-4" />
@@ -74,6 +100,9 @@
         <DispositionDrawer :is-open="isDispositionOpen" :call-id="activeCallStore.src_callid"
             :phone="activeCallStore.callerNumber"
             @close="isDispositionOpen = false" @submit="handleDispositionSubmit" />
+
+        <!-- Transfer Dialog -->
+        <TransferDialog :is-open="isTransferOpen" @close="isTransferOpen = false" @transfer="handleTransfer" />
     </div>
 </template>
 
@@ -82,12 +111,14 @@ import { ref, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useActiveCallStore } from '@/stores/activeCall'
 import DispositionDrawer from './DispositionDrawer.vue'
+import TransferDialog from './TransferDialog.vue'
 
 const activeCallStore = useActiveCallStore()
 const router = useRouter()
 const isDarkMode = inject('isDarkMode')
 
 const isDispositionOpen = ref(false)
+const isTransferOpen = ref(false)
 const remoteAudio = ref(null)
 
 // formatDuration removed; using store version in template
@@ -171,6 +202,23 @@ function setupMedia(session, retryCount = 0) {
          } else {
              console.warn('Media setup failed: No audio tracks found after retries')
          }
+    }
+}
+
+const handleToggleHold = () => {
+    activeCallStore.toggleHold()
+}
+
+const handleToggleMute = () => {
+    activeCallStore.toggleMute()
+}
+
+const handleTransfer = async (target) => {
+    try {
+        await activeCallStore.blindTransfer(target)
+        isTransferOpen.value = false
+    } catch (e) {
+        console.error('Transfer failed:', e)
     }
 }
 

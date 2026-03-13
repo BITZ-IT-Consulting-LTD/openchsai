@@ -159,6 +159,7 @@
             <option value="">All</option>
             <option value="1">Open</option>
             <option value="2">Closed</option>
+            <option value="3">Escalated</option>
           </select>
         </div>
 
@@ -178,6 +179,79 @@
         <div class="flex flex-col">
           <TaxonomySelect v-model="filters.assessment_id" label="Assessment" placeholder="Select assessment"
             root-key="GENERAL_ASSESSMENT" />
+        </div>
+
+        <!-- Escalated To -->
+        <div class="flex flex-col">
+          <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            Escalated To
+          </label>
+          <select v-model="filters.escalated_to_id"
+            class="rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+              ? 'bg-neutral-800 border border-transparent text-gray-100 focus:ring-amber-500'
+              : 'bg-gray-50 border border-transparent text-gray-900 focus:ring-amber-600'">
+            <option value="">All</option>
+            <option v-for="user in usersList" :key="'esc_to_' + user.id" :value="user.id">{{ user.name }}</option>
+          </select>
+        </div>
+
+        <!-- Escalated By -->
+        <div class="flex flex-col">
+          <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            Escalated By
+          </label>
+          <select v-model="filters.escalated_by_id"
+            class="rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+              ? 'bg-neutral-800 border border-transparent text-gray-100 focus:ring-amber-500'
+              : 'bg-gray-50 border border-transparent text-gray-900 focus:ring-amber-600'">
+            <option value="">All</option>
+            <option v-for="user in usersList" :key="'esc_by_' + user.id" :value="user.id">{{ user.name }}</option>
+          </select>
+        </div>
+
+        <!-- Services -->
+        <div class="flex flex-col">
+          <TaxonomySelect v-model="filters.service_id" label="Services" placeholder="Select service"
+            root-key="SERVICE_OFFERED" />
+        </div>
+
+        <!-- Referrals -->
+        <div class="flex flex-col">
+          <TaxonomySelect v-model="filters.referral_id" label="Referrals" placeholder="Select referral"
+            root-key="REFERRAL_TYPE" />
+        </div>
+
+        <!-- Client Name -->
+        <div class="flex flex-col">
+          <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            Client Name
+          </label>
+          <input type="text" v-model="filters.client_name" placeholder="Enter client name"
+            class="rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+              ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+              : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
+        </div>
+
+        <!-- Client Phone -->
+        <div class="flex flex-col">
+          <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            Client Phone
+          </label>
+          <input type="text" v-model="filters.client_phone" placeholder="Enter phone number"
+            class="rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+              ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+              : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
+        </div>
+
+        <!-- Perpetrator Name -->
+        <div class="flex flex-col">
+          <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+            Perpetrator Name
+          </label>
+          <input type="text" v-model="filters.perpetrator_name" placeholder="Enter perpetrator name"
+            class="rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+              ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+              : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
         </div>
       </div>
     </Transition>
@@ -206,15 +280,42 @@
 </template>
 
 <script setup>
-  import { reactive, ref, inject } from 'vue'
+  import { reactive, ref, inject, computed, onMounted } from 'vue'
   import BaseSelect from '@/components/base/BaseSelect.vue'
   import TaxonomySelect from '@/components/base/TaxonomySelect.vue'
+  import { useUserStore } from '@/stores/users'
 
   const emit = defineEmits(['update:filters'])
 
   // Inject theme
   const isDarkMode = inject('isDarkMode')
   const showAdvanced = ref(false)
+
+  // Users store for escalation selects
+  const userStore = useUserStore()
+
+  // Load users on mount for escalation dropdowns
+  onMounted(async () => {
+    if (userStore.users.length === 0) {
+      try {
+        await userStore.listUsers({ _c: 200 })
+      } catch (err) {
+        console.error('Failed to load users for filter:', err)
+      }
+    }
+  })
+
+  // Build a simple list of { id, name } from users store
+  const usersList = computed(() => {
+    if (!userStore.users?.length || !userStore.users_k) return []
+    const idIdx = userStore.users_k?.id?.[0]
+    const nameIdx = userStore.users_k?.username?.[0] ?? userStore.users_k?.name?.[0]
+    if (idIdx === undefined || nameIdx === undefined) return []
+    return userStore.users.map(u => ({
+      id: u[idIdx],
+      name: u[nameIdx]
+    })).filter(u => u.id && u.name)
+  })
 
   const filters = reactive({
     q: '',
@@ -229,7 +330,14 @@
     status: '',
     case_category_id: '',
     justice_id: '',
-    assessment_id: ''
+    assessment_id: '',
+    escalated_to_id: '',
+    escalated_by_id: '',
+    service_id: '',
+    referral_id: '',
+    client_name: '',
+    client_phone: '',
+    perpetrator_name: ''
   })
 
   // Helper to get unix timestamp from date string
@@ -311,6 +419,41 @@
     // Assessment
     if (filters.assessment_id) {
       params.assessment_id = filters.assessment_id
+    }
+
+    // Escalated To
+    if (filters.escalated_to_id) {
+      params.escalated_to_id = filters.escalated_to_id
+    }
+
+    // Escalated By
+    if (filters.escalated_by_id) {
+      params.escalated_by_id = filters.escalated_by_id
+    }
+
+    // Services
+    if (filters.service_id) {
+      params.service_id = filters.service_id
+    }
+
+    // Referrals
+    if (filters.referral_id) {
+      params.referral_id = filters.referral_id
+    }
+
+    // Client Name
+    if (filters.client_name) {
+      params.client_name = filters.client_name.trim()
+    }
+
+    // Client Phone
+    if (filters.client_phone) {
+      params.client_phone = filters.client_phone.trim()
+    }
+
+    // Perpetrator Name
+    if (filters.perpetrator_name) {
+      params.perpetrator_name = filters.perpetrator_name.trim()
     }
 
     emit('update:filters', params)

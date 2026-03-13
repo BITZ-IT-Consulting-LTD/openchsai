@@ -45,6 +45,24 @@ const routes = [
     meta: { auth: true, permission: 'calls' }
   },
   {
+    path: '/agent-availability',
+    name: 'AgentAvailability',
+    component: () => import('@/pages/AgentAvailability.vue'),
+    meta: { auth: true, permission: 'calls' }
+  },
+  {
+    path: '/internal-calls',
+    name: 'InternalCalls',
+    component: () => import('@/pages/InternalCalls.vue'),
+    meta: { auth: true, permission: 'calls' }
+  },
+  {
+    path: '/extension-history',
+    name: 'ExtensionHistory',
+    component: () => import('@/pages/ExtensionHistory.vue'),
+    meta: { auth: true, permission: 'calls' }
+  },
+  {
     path: '/cases',
     name: 'Cases',
     component: Cases,
@@ -110,12 +128,12 @@ const routes = [
     component: FAQs,
     meta: { auth: true, permission: 'faqs' }
   },
-  // { 
-  //   path: '/categories', 
-  //   name: 'Categories', 
-  //   component: Categories,
-  //   meta: { requiresAuth: true, permission: 'categories' }
-  // },
+  {
+    path: '/categories',
+    name: 'Categories',
+    component: () => import('@/pages/Categories.vue'),
+    meta: { auth: true, permission: 'categories' }
+  },
 
   {
     path: '/demo',

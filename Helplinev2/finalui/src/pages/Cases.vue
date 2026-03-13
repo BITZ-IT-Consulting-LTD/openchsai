@@ -1,18 +1,39 @@
 <template>
   <div class="space-y-6">
 
+    <!-- Case View Tabs -->
+    <div class="flex flex-wrap gap-2 p-1 rounded-xl border"
+      :class="isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-gray-50 border-gray-200'">
+      <button
+        v-for="view in caseViews"
+        :key="view.key"
+        @click="switchCaseView(view.key)"
+        class="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2"
+        :class="activeCaseView === view.key
+          ? (isDarkMode
+            ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/50'
+            : 'bg-amber-700 text-white shadow-lg shadow-amber-900/30')
+          : (isDarkMode
+            ? 'text-gray-400 hover:text-amber-400 hover:bg-neutral-800'
+            : 'text-gray-600 hover:text-amber-700 hover:bg-gray-100')"
+      >
+        <component :is="view.icon" class="w-4 h-4" />
+        {{ view.label }}
+      </button>
+    </div>
+
     <!-- Filters -->
     <CasesFilter @update:filters="applyFilters" />
 
     <!-- Loading State -->
-    <div 
-      v-if="casesStore.loading" 
+    <div
+      v-if="casesStore.loading"
       class="flex justify-center items-center py-12 rounded-lg shadow-xl border"
-      :class="isDarkMode 
-        ? 'bg-black border-transparent' 
+      :class="isDarkMode
+        ? 'bg-black border-transparent'
         : 'bg-white border-transparent'"
     >
-      <div 
+      <div
         :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'"
       >
         Loading cases...
@@ -91,7 +112,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, inject, watch } from 'vue'
+  import { ref, computed, onMounted, inject, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { toast } from 'vue-sonner'
   import { useCaseStore } from '@/stores/cases'
@@ -110,6 +131,49 @@
   const currentView = ref('timeline')
   const currentFilters = ref({})
   const selectedPageSize = ref(20)
+
+  // Case view tabs
+  const activeCaseView = ref('all')
+
+  const caseViews = [
+    { key: 'my', label: 'My Cases', icon: 'i-mdi-account-outline', getFilter: () => ({ created_by: authStore.userId }) },
+    { key: 'escalated_to', label: 'Escalated To Me', icon: 'i-mdi-arrow-down-bold-outline', getFilter: () => ({ escalated_to_id: authStore.userId }) },
+    { key: 'escalated_by', label: 'Escalated By Me', icon: 'i-mdi-arrow-up-bold-outline', getFilter: () => ({ escalated_by_id: authStore.userId }) },
+    { key: 'all', label: 'All Cases', icon: 'i-mdi-folder-multiple-outline', getFilter: () => ({}) },
+    {
+      key: 'today',
+      label: "Today's Cases",
+      icon: 'i-mdi-calendar-today',
+      getFilter: () => {
+        const today = new Date()
+        const yyyy = today.getFullYear()
+        const mm = String(today.getMonth() + 1).padStart(2, '0')
+        const dd = String(today.getDate()).padStart(2, '0')
+        const todayStr = `${yyyy}-${mm}-${dd}`
+        const fromTs = Math.floor(new Date(todayStr).setHours(0, 0, 0, 0) / 1000)
+        const toTs = Math.floor(new Date(todayStr).setHours(23, 59, 59, 999) / 1000)
+        return { created_on: `${fromTs};${toTs}` }
+      }
+    }
+  ]
+
+  // Switch case view tab
+  async function switchCaseView(viewKey) {
+    activeCaseView.value = viewKey
+    const view = caseViews.find(v => v.key === viewKey)
+    if (!view) return
+
+    const viewFilters = view.getFilter()
+    // Merge view filters with any existing manual filters
+    const merged = { ...currentFilters.value, ...viewFilters }
+    try {
+      casesStore.resetPagination()
+      await casesStore.listCases({ ...merged, _o: 0, _c: selectedPageSize.value })
+    } catch (err) {
+      console.error('Error switching case view:', err)
+      toast.error('Failed to load cases')
+    }
+  }
 
   // Debounce handle for global search
   let searchDebounce = null
@@ -190,10 +254,14 @@
   // Apply filters and fetch cases (resets to first page)
   async function applyFilters(filters) {
     currentFilters.value = filters
+    // Merge with active case view filters
+    const activeView = caseViews.find(v => v.key === activeCaseView.value)
+    const viewFilters = activeView ? activeView.getFilter() : {}
+    const mergedFilters = { ...filters, ...viewFilters }
     try {
-      console.log('Applying filters:', filters)
+      console.log('Applying filters:', mergedFilters)
       casesStore.resetPagination()
-      await casesStore.listCases({ ...filters, _o: 0, _c: selectedPageSize.value })
+      await casesStore.listCases({ ...mergedFilters, _o: 0, _c: selectedPageSize.value })
 
       // Auto-select if a single record is found via direct search
       if (filters.q && casesStore.cases.length === 1) {

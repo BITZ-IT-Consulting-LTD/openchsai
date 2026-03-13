@@ -726,7 +726,7 @@
             age: getValueOrDefault(perpetratorForm.age),
             dob: getValueOrDefault(perpetratorForm.dob),
             age_group_id: getValueOrDefault(perpetratorForm.ageGroup),
-            location_id: getValueOrDefault(perpetratorForm.sex),
+            location_id: getValueOrDefault(perpetratorForm.location),
             sex_id: getValueOrDefault(perpetratorForm.sex),
             landmark: getValueOrDefault(perpetratorForm.landmark),
             nationality_id: getValueOrDefault(perpetratorForm.nationality),

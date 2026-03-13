@@ -158,10 +158,20 @@
               <i-mdi-chart-line class="w-6 h-6" :class="isDarkMode ? 'text-amber-500' : 'text-amber-700'" />
               {{ formatFieldName(selectedEndpoint) }} Analytics
             </h2>
-            <div class="px-4 py-2 rounded-lg text-sm font-medium border" :class="isDarkMode
-              ? 'bg-amber-600/20 text-amber-500 border-amber-600/30'
-              : 'bg-amber-100 text-amber-700 border-amber-300'">
-              {{ formatFieldName(currentMetric) }}
+            <div class="flex items-center gap-3">
+              <button v-if="chartData.length > 0" @click="downloadChartAsPNG"
+                class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5 border"
+                :class="isDarkMode
+                  ? 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-amber-500 hover:text-amber-400'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-amber-500 hover:text-amber-700'">
+                <i-mdi-image-outline class="w-4 h-4" />
+                PNG
+              </button>
+              <div class="px-4 py-2 rounded-lg text-sm font-medium border" :class="isDarkMode
+                ? 'bg-amber-600/20 text-amber-500 border-amber-600/30'
+                : 'bg-amber-100 text-amber-700 border-amber-300'">
+                {{ formatFieldName(currentMetric) }}
+              </div>
             </div>
           </div>
 
@@ -258,11 +268,21 @@
         <div v-if="!isDashboardMode" class="rounded-lg shadow-xl p-6 border" :class="isDarkMode
           ? 'bg-black border-transparent'
           : 'bg-white border-transparent'">
-          <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"
-            :class="isDarkMode ? 'text-gray-100' : 'text-gray-900'">
-            <i-mdi-table class="w-6 h-6" :class="isDarkMode ? 'text-amber-500' : 'text-amber-700'" />
-            Data Table
-          </h2>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold flex items-center gap-2"
+              :class="isDarkMode ? 'text-gray-100' : 'text-gray-900'">
+              <i-mdi-table class="w-6 h-6" :class="isDarkMode ? 'text-amber-500' : 'text-amber-700'" />
+              Data Table
+            </h2>
+            <button v-if="tableData.length > 0" @click="exportTableAsCSV"
+              class="px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 flex items-center gap-1.5 border"
+              :class="isDarkMode
+                ? 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-amber-500 hover:text-amber-400'
+                : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-amber-500 hover:text-amber-700'">
+              <i-mdi-file-delimited-outline class="w-4 h-4" />
+              Export CSV
+            </button>
+          </div>
 
           <div v-if="loading" class="flex items-center justify-center h-64">
             <div class="flex flex-col items-center gap-4">
@@ -770,5 +790,66 @@
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
+  }
+
+  // Export table data as CSV
+  function exportTableAsCSV() {
+    if (tableData.value.length === 0) return
+
+    const filterHeaders = selectedYAxis.value.map(f => formatFieldName(f))
+    const periodHeaders = tableTimePeriods.value
+    const headers = [...filterHeaders, ...periodHeaders, 'Total']
+
+    const rows = tableData.value.map(row => {
+      const filterCells = row.filters.map(f => `"${f || ''}"`)
+      const countCells = row.counts.map(c => c)
+      return [...filterCells, ...countCells, row.total].join(',')
+    })
+
+    // Add totals row
+    const totalFilterCells = selectedYAxis.value.map(() => '"Total"')
+    const totalRow = [...totalFilterCells.slice(0, 1), ...totalFilterCells.slice(1).map(() => '""'), ...columnTotals.value, grandTotal.value].join(',')
+
+    const csv = [headers.join(','), ...rows, totalRow].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${formatFieldName(selectedEndpoint.value)}_report_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Download chart as PNG using SVG-to-canvas approach
+  function downloadChartAsPNG() {
+    const svgEl = document.querySelector('svg')
+    if (!svgEl) return
+
+    const serializer = new XMLSerializer()
+    const svgString = serializer.serializeToString(svgEl)
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(svgBlob)
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+
+    img.onload = () => {
+      canvas.width = img.width * 2
+      canvas.height = img.height * 2
+      ctx.scale(2, 2)
+      ctx.fillStyle = isDarkMode.value ? '#000000' : '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+
+      const pngUrl = canvas.toDataURL('image/png')
+      const a = document.createElement('a')
+      a.href = pngUrl
+      a.download = `${formatFieldName(selectedEndpoint.value)}_chart_${new Date().toISOString().slice(0, 10)}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+
+    img.src = url
   }
 </script>

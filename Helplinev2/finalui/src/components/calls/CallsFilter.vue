@@ -124,6 +124,106 @@
 
     </div>
 
+    <!-- Collapsible: Case Filters -->
+    <div class="mt-4">
+      <button @click="showCaseFilters = !showCaseFilters"
+        class="text-xs font-semibold flex items-center gap-1 transition-colors"
+        :class="isDarkMode ? 'text-amber-500 hover:text-amber-400' : 'text-amber-700 hover:text-amber-800'">
+        <component :is="showCaseFilters ? 'i-mdi-chevron-up' : 'i-mdi-chevron-down'" class="w-4 h-4" />
+        {{ showCaseFilters ? 'Hide Case Filters' : 'Show Case Filters' }}
+      </button>
+      <Transition name="fade">
+        <div v-if="showCaseFilters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
+          <!-- Case ID -->
+          <div class="flex flex-col">
+            <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+              Case ID
+            </label>
+            <input type="text" v-model="filters.caseId" placeholder="Enter case ID"
+              class="rounded px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+                ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+                : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
+          </div>
+        </div>
+      </Transition>
+    </div>
+
+    <!-- Collapsible: Reporter Filters -->
+    <div class="mt-4">
+      <button @click="showReporterFilters = !showReporterFilters"
+        class="text-xs font-semibold flex items-center gap-1 transition-colors"
+        :class="isDarkMode ? 'text-amber-500 hover:text-amber-400' : 'text-amber-700 hover:text-amber-800'">
+        <component :is="showReporterFilters ? 'i-mdi-chevron-up' : 'i-mdi-chevron-down'" class="w-4 h-4" />
+        {{ showReporterFilters ? 'Hide Reporter Filters' : 'Show Reporter Filters' }}
+      </button>
+      <Transition name="fade">
+        <div v-if="showReporterFilters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
+          <!-- Reporter Name -->
+          <div class="flex flex-col">
+            <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+              Name
+            </label>
+            <input type="text" v-model="filters.reporterName" placeholder="Reporter name"
+              class="rounded px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+                ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+                : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
+          </div>
+
+          <!-- Reporter Phone -->
+          <div class="flex flex-col">
+            <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+              Phone
+            </label>
+            <input type="text" v-model="filters.reporterPhone" placeholder="Reporter phone"
+              class="rounded px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+                ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+                : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
+          </div>
+
+          <!-- Reporter Age -->
+          <div class="flex flex-col">
+            <label class="text-sm font-medium mb-1" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">
+              Age
+            </label>
+            <input type="number" v-model="filters.reporterAge" placeholder="Age" min="0" max="150"
+              class="rounded px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent" :class="isDarkMode
+                ? 'bg-neutral-800 border border-transparent text-gray-100 placeholder-gray-500 focus:ring-amber-500'
+                : 'bg-gray-50 border border-transparent text-gray-900 placeholder-gray-400 focus:ring-amber-600'" />
+          </div>
+
+          <!-- Reporter Sex -->
+          <div class="flex flex-col">
+            <TaxonomySelect v-model="filters.reporterSex" label="Sex" placeholder="Select sex"
+              root-key="SEX" />
+          </div>
+
+          <!-- Reporter Location -->
+          <div class="flex flex-col">
+            <TaxonomySelect v-model="filters.reporterLocation" label="Location" placeholder="Select location"
+              root-key="LOCATION" />
+          </div>
+
+          <!-- Reporter Nationality -->
+          <div class="flex flex-col">
+            <TaxonomySelect v-model="filters.reporterNationality" label="Nationality" placeholder="Select nationality"
+              root-key="NATIONALITY" />
+          </div>
+
+          <!-- Reporter Language -->
+          <div class="flex flex-col">
+            <TaxonomySelect v-model="filters.reporterLanguage" label="Language" placeholder="Select language"
+              root-key="LANGUAGE" />
+          </div>
+
+          <!-- Reporter Tribe -->
+          <div class="flex flex-col">
+            <TaxonomySelect v-model="filters.reporterTribe" label="Tribe" placeholder="Select tribe"
+              root-key="TRIBE" />
+          </div>
+        </div>
+      </Transition>
+    </div>
+
     <!-- Action Buttons -->
     <div class="flex gap-2 mt-4">
       <button @click="applyFilters"
@@ -147,12 +247,17 @@
 </template>
 
 <script setup>
-import { reactive, inject } from 'vue'
+import { reactive, ref, inject } from 'vue'
+import TaxonomySelect from '@/components/base/TaxonomySelect.vue'
 
   // Inject theme
   const isDarkMode = inject('isDarkMode')
 
   const emit = defineEmits(['update:filters'])
+
+  // Collapsible section state
+  const showCaseFilters = ref(false)
+  const showReporterFilters = ref(false)
 
   const filters = reactive({
     dateFrom: '',
@@ -162,7 +267,18 @@ import { reactive, inject } from 'vue'
     extension: '',
     hangupStatus: '',
     hangupBy: '',
-    qaScore: ''
+    qaScore: '',
+    // Case filters
+    caseId: '',
+    // Reporter filters
+    reporterName: '',
+    reporterPhone: '',
+    reporterAge: '',
+    reporterSex: '',
+    reporterLocation: '',
+    reporterNationality: '',
+    reporterLanguage: '',
+    reporterTribe: ''
   })
 
   // Helper to get unix timestamp from date string
@@ -224,19 +340,58 @@ import { reactive, inject } from 'vue'
       params.qa_score = filters.qaScore
     }
 
+    // Case filters
+    if (filters.caseId) {
+      params.case_id = filters.caseId.trim()
+    }
+
+    // Reporter filters
+    if (filters.reporterName) {
+      params.reporter_name = filters.reporterName.trim()
+    }
+    if (filters.reporterPhone) {
+      params.reporter_phone = filters.reporterPhone.trim()
+    }
+    if (filters.reporterAge) {
+      params.reporter_age = filters.reporterAge
+    }
+    if (filters.reporterSex) {
+      params.reporter_sex = filters.reporterSex
+    }
+    if (filters.reporterLocation) {
+      params.reporter_location = filters.reporterLocation
+    }
+    if (filters.reporterNationality) {
+      params.reporter_nationality = filters.reporterNationality
+    }
+    if (filters.reporterLanguage) {
+      params.reporter_language = filters.reporterLanguage
+    }
+    if (filters.reporterTribe) {
+      params.reporter_tribe = filters.reporterTribe
+    }
+
     emit('update:filters', params)
   }
 
   function resetFilters() {
-    filters.dateFrom = ''
-    filters.dateTo = ''
-    filters.direction = ''
-    filters.phone = ''
-    filters.extension = ''
-    filters.hangupStatus = ''
-    filters.hangupBy = ''
-    filters.qaScore = ''
+    Object.keys(filters).forEach(key => {
+      filters[key] = ''
+    })
 
     emit('update:filters', {})
   }
 </script>
+
+<style scoped>
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: all 0.3s ease;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+</style>

@@ -394,6 +394,21 @@ export const useRealtimeStore = defineStore('realtime', {
 
       this._reconnectAttempts = { ami: 0, ati: 0 }
       console.log('[Realtime] Disconnected all')
+    },
+
+    // ── Supervisor Actions ──────────────────────────────────────────
+    async supervisorAction(action, channel) {
+      try {
+        const { default: axiosInstance } = await import('@/utils/axios')
+        const response = await axiosInstance.post('api/sup/', {
+          action: String(action),
+          channel: channel
+        })
+        return response.data
+      } catch (err) {
+        console.error('[Realtime] Supervisor action failed:', err)
+        throw err
+      }
     }
   }
 })

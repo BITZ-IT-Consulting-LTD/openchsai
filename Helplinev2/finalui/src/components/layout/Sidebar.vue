@@ -31,6 +31,30 @@
           <span class="text-sm">Calls</span>
         </RouterLink>
 
+        <!-- Agent Availability - same permission as calls -->
+        <RouterLink v-if="hasPermission('calls')" to="/agent-availability"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
+          :class="getNavLinkClass($route.path === '/agent-availability')">
+          <i-mdi-account-clock-outline class="w-5 h-5" />
+          <span class="text-sm">Agent Availability</span>
+        </RouterLink>
+
+        <!-- Internal Calls - same permission as calls -->
+        <RouterLink v-if="hasPermission('calls')" to="/internal-calls"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
+          :class="getNavLinkClass($route.path === '/internal-calls')">
+          <i-mdi-phone-in-talk-outline class="w-5 h-5" />
+          <span class="text-sm">Internal Calls</span>
+        </RouterLink>
+
+        <!-- Extension History - same permission as calls -->
+        <RouterLink v-if="hasPermission('calls')" to="/extension-history"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
+          :class="getNavLinkClass($route.path === '/extension-history')">
+          <i-mdi-history class="w-5 h-5" />
+          <span class="text-sm">Extension History</span>
+        </RouterLink>
+
         <!-- Cases - All main roles -->
         <RouterLink v-if="hasPermission('cases')" to="/cases"
           class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
@@ -77,6 +101,14 @@
           :class="getNavLinkClass($route.path === '/users')">
           <i-mdi-account-multiple-outline class="w-5 h-5" />
           <span class="text-sm">Users</span>
+        </RouterLink>
+
+        <!-- Categories - admin only -->
+        <RouterLink v-if="hasPermission('users')" to="/categories"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
+          :class="getNavLinkClass($route.path === '/categories')">
+          <i-mdi-file-tree class="w-5 h-5" />
+          <span class="text-sm">Categories</span>
         </RouterLink>
 
         <!-- Reports - supervisor, case manager, admin -->
@@ -157,6 +189,8 @@
 
 <script setup>
   import { useAuthStore } from '@/stores/auth'
+  import { useSipStore } from '@/stores/sip'
+  import { useActiveCallStore } from '@/stores/activeCall'
   import { useRouter } from 'vue-router'
 
   const props = defineProps({
@@ -169,6 +203,8 @@
   defineEmits(['toggle-theme'])
 
   const authStore = useAuthStore()
+  const sipStore = useSipStore()
+  const activeCallStore = useActiveCallStore()
   const router = useRouter()
 
   const hasPermission = (permission) => {
@@ -189,7 +225,13 @@
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await sipStore.stop()
+    } catch (e) {
+      console.warn('SIP stop on logout failed:', e)
+    }
+    activeCallStore.resetQueueState()
     authStore.logout()
     router.push('/login')
   }

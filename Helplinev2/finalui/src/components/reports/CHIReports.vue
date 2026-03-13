@@ -10,10 +10,10 @@
           </p>
         </div>
         
-        <!-- Date Filter -->
+        <!-- Date Filter & Export -->
         <div class="flex items-center gap-2">
-          <select 
-            v-model="timeRange" 
+          <select
+            v-model="timeRange"
             class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-amber-500"
           >
             <option value="today">Today</option>
@@ -22,7 +22,14 @@
             <option value="quarter">This Quarter</option>
             <option value="year">This Year</option>
           </select>
-          <button 
+          <button
+            @click="exportCHIReport"
+            class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+            title="Export as CSV"
+          >
+            <i-mdi-file-download-outline class="w-5 h-5" />
+          </button>
+          <button
             @click="refreshData"
             class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
           >
@@ -320,6 +327,58 @@ const refreshData = async () => {
    } finally {
       loading.value = false
    }
+}
+
+// Export CHI report data as CSV
+const exportCHIReport = () => {
+   const rows = []
+
+   // Demographics section
+   rows.push(['=== Demographics Matrix ==='])
+   rows.push(['Age Group', 'Male', 'Female', 'Other/Unknown', 'Total'])
+   ageGroups.forEach(age => {
+      rows.push([
+         age,
+         getMatrixValue(age, 'Male'),
+         getMatrixValue(age, 'Female'),
+         getMatrixValue(age, 'Other'),
+         getMatrixRowTotal(age)
+      ])
+   })
+   rows.push(['Total', getMatrixColTotal('Male'), getMatrixColTotal('Female'), getMatrixColTotal('Other'), grandTotalContacts.value])
+   rows.push([])
+
+   // Contact Methods
+   rows.push(['=== Contact Methods ==='])
+   rows.push(['Method', 'Count', 'Percent'])
+   contactsByMethod.value.forEach(item => {
+      rows.push([item.label, item.value, `${item.percent}%`])
+   })
+   rows.push([])
+
+   // Main Categories
+   rows.push(['=== Main Reasons for Contact ==='])
+   rows.push(['Category', 'Count'])
+   categoryChart.value.forEach(item => {
+      rows.push([item.label, item.value])
+   })
+   rows.push([])
+
+   // Actions
+   rows.push(['=== Actions Taken ==='])
+   rows.push(['Action', 'Count'])
+   actionsList.value.forEach(item => {
+      rows.push([item.label, item.value])
+   })
+
+   const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+   const blob = new Blob([csv], { type: 'text/csv' })
+   const url = URL.createObjectURL(blob)
+   const a = document.createElement('a')
+   a.href = url
+   a.download = `CHI_Report_${timeRange.value}_${new Date().toISOString().slice(0, 10)}.csv`
+   a.click()
+   URL.revokeObjectURL(url)
 }
 
 onMounted(() => {

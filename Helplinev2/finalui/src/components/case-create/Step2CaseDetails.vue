@@ -79,6 +79,7 @@
               <option value="">Select status</option>
               <option value="1">Open</option>
               <option value="2">Closed</option>
+              <option value="3">Escalated</option>
             </select>
           </div>
         </div>

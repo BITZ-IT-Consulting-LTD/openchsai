@@ -62,6 +62,14 @@
               <i-mdi-table class="w-5 h-5" />
               <span class="hidden sm:inline">Table</span>
             </button>
+            <button @click="exportMessages" title="Export as XLSX"
+              class="px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm border w-full md:w-auto"
+              :class="isDarkMode
+                ? 'bg-black text-gray-300 border-transparent hover:border-amber-500 hover:text-amber-400'
+                : 'bg-white text-gray-700 border-transparent hover:border-amber-600 hover:text-amber-700'">
+              <i-mdi-file-download-outline class="w-5 h-5" />
+              <span class="hidden sm:inline">Export</span>
+            </button>
             <button @click="refreshMessages" :disabled="messagesStore.loading"
               class="px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm border disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
               :class="isDarkMode
@@ -253,6 +261,16 @@
       console.error('Error filtering messages:', err)
       toast.error('Failed to filter messages. Please try again.')
     }
+  }
+
+  // Export messages as XLSX
+  const exportMessages = () => {
+    const params = new URLSearchParams()
+    if (activePlatform.value && activePlatform.value !== 'all') {
+      params.set('src', activePlatform.value)
+    }
+    params.set('xlsx', '1')
+    window.location.href = `/api-proxy/api/messages/?${params.toString()}`
   }
 
   // Refresh messages (maintains current page)

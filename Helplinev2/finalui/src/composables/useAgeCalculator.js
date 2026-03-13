@@ -1,32 +1,74 @@
 
+import { useTaxonomyStore } from '@/stores/taxonomy'
+
 export function useAgeCalculator() {
-    const AGE_GROUP_MAP = {
-        '0-5': '361950',
-        '6-12': '361951',
-        '13-17': '361952',
-        '18-24': '361953',
-        '25-35': '361954',
-        '36-50': '361955',
-        '51+': '361956'
-    };
+    // Resolve age group IDs dynamically from taxonomy store
+    function getAgeGroupOptions() {
+        const taxonomyStore = useTaxonomyStore()
+        const rootId = taxonomyStore.roots?.AGE_GROUP
+        if (!rootId) {
+            // Fallback to hardcoded DEMO IDs if taxonomy not loaded
+            return {
+                '0-5': '361950',
+                '6-12': '361951',
+                '13-17': '361952',
+                '18-24': '361953',
+                '25-35': '361954',
+                '36-50': '361955',
+                '51+': '361956'
+            }
+        }
+
+        const cached = taxonomyStore.categoriesCache[rootId]
+        if (cached && cached.items && cached.keys) {
+            const k = cached.keys
+            const idIdx = Number(k.id?.[0] ?? 0)
+            const nameIdx = Number(k.name?.[0] ?? 5)
+            const map = {}
+            cached.items.forEach(item => {
+                const name = item[nameIdx]
+                const id = String(item[idIdx])
+                if (name && id) map[name] = id
+            })
+            if (Object.keys(map).length > 0) return map
+        }
+
+        // Fallback
+        return {
+            '0-5': '361950',
+            '6-12': '361951',
+            '13-17': '361952',
+            '18-24': '361953',
+            '25-35': '361954',
+            '36-50': '361955',
+            '51+': '361956'
+        }
+    }
+
+    const AGE_BRACKETS = [
+        { min: 0, max: 5, label: '0-5' },
+        { min: 6, max: 12, label: '6-12' },
+        { min: 13, max: 17, label: '13-17' },
+        { min: 18, max: 24, label: '18-24' },
+        { min: 25, max: 35, label: '25-35' },
+        { min: 36, max: 50, label: '36-50' },
+        { min: 51, max: Infinity, label: '51+' }
+    ]
 
     const getAgeGroupFromAge = (age) => {
         if (!age && age !== 0) return '';
         const a = parseInt(age);
         if (isNaN(a) || a < 0) return '';
 
-        if (a < 6) return '0-5';
-        if (a <= 12) return '6-12';
-        if (a <= 17) return '13-17';
-        if (a <= 24) return '18-24';
-        if (a <= 35) return '25-35';
-        if (a <= 50) return '36-50';
-        return '51+';
+        const bracket = AGE_BRACKETS.find(b => a >= b.min && a <= b.max)
+        return bracket ? bracket.label : ''
     };
 
     const getAgeGroupId = (age) => {
         const text = getAgeGroupFromAge(age);
-        return AGE_GROUP_MAP[text] || '';
+        if (!text) return ''
+        const map = getAgeGroupOptions()
+        return map[text] || '';
     };
 
     const calculateAgeFromDob = (dob) => {
@@ -48,13 +90,12 @@ export function useAgeCalculator() {
 
         const today = new Date();
         const birthYear = today.getFullYear() - a;
-        // Default to Jan 1st to encompass the full year possibility usually
-        // Construct YYYY-MM-DD
         return `${birthYear}-01-01`;
     };
 
     return {
         getAgeGroupId,
+        getAgeGroupFromAge,
         calculateAgeFromDob,
         calculateDobFromAge
     };
