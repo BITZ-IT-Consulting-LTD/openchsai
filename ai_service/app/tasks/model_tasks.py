@@ -658,3 +658,135 @@ def whisper_transcribe_task(
         model_operations_total.labels(model="whisper", operation="transcribe", status="failure").inc()
         logger.error(f" Whisper task failed: {e}")
         raise
+
+
+
+# ATTENTION FUSION TASKS
+
+
+def _get_fusion_model():
+    """Retrieve the loaded AttentionFusion model from the worker loader."""
+    loader = get_worker_model_loader()
+    model = loader.models.get("attention_fusion")
+    if model is None or not model.is_ready():
+        raise RuntimeError(
+            "Attention Fusion model is not loaded. "
+            "Check /health/models for status."
+        )
+    return model
+
+
+@celery_app.task(bind=True, name="fusion_analyze_task", max_retries=2)
+def fusion_analyze_task(self, text: str, threshold: float = 0.5) -> Dict[str, Any]:
+    """
+    Run NER + Classification + QA through the shared DistilBERT backbone
+    and return all results in a single response.
+    """
+    start_time = datetime.now()
+    try:
+        model = _get_fusion_model()
+        result = model.predict_all(text, threshold=threshold)
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        model_processing_seconds.labels(model="attention_fusion", operation="analyze").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="analyze", status="success").inc()
+        logger.info(f"Fusion analyze completed in {processing_time:.2f}s")
+
+        return {
+            "ner": result["ner"],
+            "classification": result["classification"],
+            "qa": result["qa"],
+            "processing_time": processing_time,
+            "model_info": model.get_model_info(),
+            "timestamp": datetime.now().isoformat(),
+            "task_id": self.request.id,
+        }
+    except Exception as e:
+        processing_time = (datetime.now() - start_time).total_seconds()
+        model_processing_seconds.labels(model="attention_fusion", operation="analyze").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="analyze", status="failure").inc()
+        logger.error(f"Fusion analyze task failed: {e}")
+        raise
+
+
+@celery_app.task(bind=True, name="fusion_ner_task", max_retries=2)
+def fusion_ner_task(self, text: str) -> Dict[str, Any]:
+    """Extract named entities using the Attention Fusion backbone."""
+    start_time = datetime.now()
+    try:
+        model = _get_fusion_model()
+        entities = model.predict_ner(text)
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        model_processing_seconds.labels(model="attention_fusion", operation="ner").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="ner", status="success").inc()
+
+        return {
+            "entities": entities,
+            "entity_count": len(entities),
+            "processing_time": processing_time,
+            "model_info": model.get_model_info(),
+            "timestamp": datetime.now().isoformat(),
+            "task_id": self.request.id,
+        }
+    except Exception as e:
+        processing_time = (datetime.now() - start_time).total_seconds()
+        model_processing_seconds.labels(model="attention_fusion", operation="ner").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="ner", status="failure").inc()
+        logger.error(f"Fusion NER task failed: {e}")
+        raise
+
+
+@celery_app.task(bind=True, name="fusion_classify_task", max_retries=2)
+def fusion_classify_task(self, text: str) -> Dict[str, Any]:
+    """Classify a call transcript using the Attention Fusion backbone."""
+    start_time = datetime.now()
+    try:
+        model = _get_fusion_model()
+        classification = model.predict_classification(text)
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        model_processing_seconds.labels(model="attention_fusion", operation="classify").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="classify", status="success").inc()
+
+        return {
+            "classification": classification,
+            "processing_time": processing_time,
+            "model_info": model.get_model_info(),
+            "timestamp": datetime.now().isoformat(),
+            "task_id": self.request.id,
+        }
+    except Exception as e:
+        processing_time = (datetime.now() - start_time).total_seconds()
+        model_processing_seconds.labels(model="attention_fusion", operation="classify").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="classify", status="failure").inc()
+        logger.error(f"Fusion classify task failed: {e}")
+        raise
+
+
+@celery_app.task(bind=True, name="fusion_qa_task", max_retries=2)
+def fusion_qa_task(self, text: str, threshold: float = 0.5) -> Dict[str, Any]:
+    """Score QA sub-metrics using the Attention Fusion backbone."""
+    start_time = datetime.now()
+    try:
+        model = _get_fusion_model()
+        qa_scores = model.predict_qa(text, threshold=threshold)
+        processing_time = (datetime.now() - start_time).total_seconds()
+
+        model_processing_seconds.labels(model="attention_fusion", operation="qa").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="qa", status="success").inc()
+
+        return {
+            "evaluations": qa_scores,
+            "processing_time": processing_time,
+            "model_info": model.get_model_info(),
+            "timestamp": datetime.now().isoformat(),
+            "task_id": self.request.id,
+        }
+    except Exception as e:
+        processing_time = (datetime.now() - start_time).total_seconds()
+        model_processing_seconds.labels(model="attention_fusion", operation="qa").observe(processing_time)
+        model_operations_total.labels(model="attention_fusion", operation="qa", status="failure").inc()
+        logger.error(f"Fusion QA task failed: {e}")
+        raise
+        raise

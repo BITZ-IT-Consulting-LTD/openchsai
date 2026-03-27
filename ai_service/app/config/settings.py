@@ -236,6 +236,16 @@ class Settings(BaseSettings):
         description="HuggingFace model ID for question answering"
     )
 
+    hf_attention_fusion_model: str = Field(
+        default="",
+        description="HuggingFace model ID for the unified Attention Fusion model (NER + CLS + QA)"
+    )
+
+    attention_fusion_model_path: str = Field(
+        default="",
+        description="Absolute local path to the Attention Fusion checkpoint directory (overrides models_path/attention_fusion)"
+    )
+
     # ============================================================================
     # REDIS CONFIGURATION
     # ============================================================================
@@ -704,7 +714,8 @@ class Settings(BaseSettings):
             "ner": self.hf_ner_model,
             "translator": self.hf_translator_model,
             "summarizer": self.hf_summarizer_model,
-            "qa": self.hf_qa_model
+            "qa": self.hf_qa_model,
+            "attention_fusion": self.hf_attention_fusion_model,
         }
 
         model_id = model_id_map.get(model_name, "")

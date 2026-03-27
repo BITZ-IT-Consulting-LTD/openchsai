@@ -33,4 +33,4 @@ All API requests require either an **API key** or **OAuth 2.0 token**.
 ## Quick Links
 
 - [Helpline API Reference](./helpline-service)  
-- [AI API Reference](./ai-service)
+<!-- - [AI API Reference](./ai-service) -->

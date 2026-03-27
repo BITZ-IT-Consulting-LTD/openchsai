@@ -84,7 +84,7 @@ Returns complete processing result immediately (see [Complete Result Structure](
 
 **cURL (Asynchronous)**:
 ```bash
-curl -X POST "http://localhost:8123/audio/process" \
+curl -X POST "http://localhost:8125/audio/process" \
   -F "audio=@recording.wav" \
   -F "language=sw" \
   -F "include_translation=true" \
@@ -94,7 +94,7 @@ curl -X POST "http://localhost:8123/audio/process" \
 
 **cURL (Synchronous)**:
 ```bash
-curl -X POST "http://localhost:8123/audio/process" \
+curl -X POST "http://localhost:8125/audio/process" \
   -F "audio=@recording.wav" \
   -F "language=sw" \
   -F "background=false"
@@ -106,7 +106,7 @@ import requests
 
 with open('recording.wav', 'rb') as audio_file:
     response = requests.post(
-        'http://localhost:8123/audio/process',
+        'http://localhost:8125/audio/process',
         files={'audio': audio_file},
         data={
             'language': 'sw',
@@ -127,7 +127,7 @@ import requests
 
 with open('recording.wav', 'rb') as audio_file:
     response = requests.post(
-        'http://localhost:8123/audio/process',
+        'http://localhost:8125/audio/process',
         files={'audio': audio_file},
         data={
             'language': 'sw',
@@ -350,7 +350,7 @@ Same as `/audio/process`
 
 **cURL**:
 ```bash
-curl -X POST "http://localhost:8123/audio/analyze" \
+curl -X POST "http://localhost:8125/audio/analyze" \
   -F "audio=@quick_check.wav" \
   -F "language=en" \
   -F "background=true"
@@ -362,7 +362,7 @@ import requests
 
 with open('quick_check.wav', 'rb') as audio_file:
     response = requests.post(
-        'http://localhost:8123/audio/analyze',
+        'http://localhost:8125/audio/analyze',
         files={'audio': audio_file},
         data={'language': 'en', 'background': True}
     )
@@ -462,7 +462,7 @@ Steps are emitted in this order with progress percentages:
 
 **cURL**:
 ```bash
-curl -X POST "http://localhost:8123/audio/process-stream" \
+curl -X POST "http://localhost:8125/audio/process-stream" \
   -F "audio=@recording.wav" \
   -F "language=sw" \
   -N  # Enable streaming
@@ -474,7 +474,7 @@ import requests
 import json
 
 response = requests.post(
-    'http://localhost:8123/audio/process-stream',
+    'http://localhost:8125/audio/process-stream',
     files={'audio': open('recording.wav', 'rb')},
     data={'language': 'sw'},
     stream=True
@@ -635,7 +635,7 @@ The task can be in one of several states:
 
 **cURL**:
 ```bash
-curl -X GET "http://localhost:8123/audio/task/550e8400-e29b-41d4-a716-446655440000"
+curl -X GET "http://localhost:8125/audio/task/550e8400-e29b-41d4-a716-446655440000"
 ```
 
 **Python**:
@@ -643,7 +643,7 @@ curl -X GET "http://localhost:8123/audio/task/550e8400-e29b-41d4-a716-4466554400
 import requests
 
 task_id = "550e8400-e29b-41d4-a716-446655440000"
-response = requests.get(f'http://localhost:8123/audio/task/{task_id}')
+response = requests.get(f'http://localhost:8125/audio/task/{task_id}')
 
 status_data = response.json()
 print(f"Status: {status_data['status']}")
@@ -669,7 +669,7 @@ def poll_task_status(task_id, max_wait=300):
         if elapsed > max_wait:
             return None
         
-        response = requests.get(f'http://localhost:8123/audio/task/{task_id}')
+        response = requests.get(f'http://localhost:8125/audio/task/{task_id}')
         status_data = response.json()
         
         if status_data['status'] in ['completed', 'failed']:
@@ -740,7 +740,7 @@ def poll_task_status(task_id, max_wait=300):
 
 **cURL**:
 ```bash
-curl -X DELETE "http://localhost:8123/audio/task/550e8400-e29b-41d4-a716-446655440000"
+curl -X DELETE "http://localhost:8125/audio/task/550e8400-e29b-41d4-a716-446655440000"
 ```
 
 **Python**:
@@ -748,7 +748,7 @@ curl -X DELETE "http://localhost:8123/audio/task/550e8400-e29b-41d4-a716-4466554
 import requests
 
 task_id = "550e8400-e29b-41d4-a716-446655440000"
-response = requests.delete(f'http://localhost:8123/audio/task/{task_id}')
+response = requests.delete(f'http://localhost:8125/audio/task/{task_id}')
 
 if response.status_code == 200:
     print("Task cancelled successfully")
@@ -833,14 +833,14 @@ if response.status_code == 200:
 
 **cURL**:
 ```bash
-curl -X GET "http://localhost:8123/audio/tasks/active"
+curl -X GET "http://localhost:8125/audio/tasks/active"
 ```
 
 **Python**:
 ```python
 import requests
 
-response = requests.get('http://localhost:8123/audio/tasks/active')
+response = requests.get('http://localhost:8125/audio/tasks/active')
 data = response.json()
 
 print(f"Total active tasks: {data['total_active']}")
@@ -970,14 +970,14 @@ for task in data['active_tasks']:
 
 **cURL**:
 ```bash
-curl -X GET "http://localhost:8123/audio/queue/status"
+curl -X GET "http://localhost:8125/audio/queue/status"
 ```
 
 **Python**:
 ```python
 import requests
 
-response = requests.get('http://localhost:8123/audio/queue/status')
+response = requests.get('http://localhost:8125/audio/queue/status')
 data = response.json()
 
 if data['status'] == 'healthy':
@@ -1069,14 +1069,14 @@ else:
 
 **cURL**:
 ```bash
-curl -X GET "http://localhost:8123/audio/workers/status"
+curl -X GET "http://localhost:8125/audio/workers/status"
 ```
 
 **Python**:
 ```python
 import requests
 
-response = requests.get('http://localhost:8123/audio/workers/status')
+response = requests.get('http://localhost:8125/audio/workers/status')
 data = response.json()
 
 print(f"Total workers: {data['total_workers']}")
@@ -1112,7 +1112,7 @@ import time
 # Step 1: Submit audio for processing
 with open('recording.wav', 'rb') as audio_file:
     response = requests.post(
-        'http://localhost:8123/audio/process',
+        'http://localhost:8125/audio/process',
         files={'audio': audio_file},
         data={
             'language': 'sw',
@@ -1132,7 +1132,7 @@ attempt = 0
 wait_time = 2
 
 while attempt < max_attempts:
-    response = requests.get(f'http://localhost:8123/audio/task/{task_id}')
+    response = requests.get(f'http://localhost:8125/audio/task/{task_id}')
     status_data = response.json()
     
     status = status_data['status']
@@ -1167,7 +1167,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def check_queue_capacity():
     """Check if queue can accept more tasks"""
-    response = requests.get('http://localhost:8123/audio/queue/status')
+    response = requests.get('http://localhost:8125/audio/queue/status')
     data = response.json()
     
     if data['status'] != 'healthy':
@@ -1180,7 +1180,7 @@ def submit_audio(file_path):
     """Submit a single audio file"""
     with open(file_path, 'rb') as audio_file:
         response = requests.post(
-            'http://localhost:8123/audio/process',
+            'http://localhost:8125/audio/process',
             files={'audio': audio_file},
             data={'language': 'sw', 'background': True}
         )
@@ -1189,7 +1189,7 @@ def submit_audio(file_path):
 def wait_for_task(task_id):
     """Wait for task completion"""
     for _ in range(60):
-        response = requests.get(f'http://localhost:8123/audio/task/{task_id}')
+        response = requests.get(f'http://localhost:8125/audio/task/{task_id}')
         status_data = response.json()
         
         if status_data['status'] == 'completed':
@@ -1241,7 +1241,7 @@ def process_with_progress(audio_path):
     
     with open(audio_path, 'rb') as audio_file:
         response = requests.post(
-            'http://localhost:8123/audio/process-stream',
+            'http://localhost:8125/audio/process-stream',
             files={'audio': audio_file},
             data={'language': 'sw'},
             stream=True
@@ -1296,7 +1296,7 @@ def robust_audio_processing(file_path, max_retries=3):
         try:
             # Check system health first
             health_response = requests.get(
-                'http://localhost:8123/audio/queue/status',
+                'http://localhost:8125/audio/queue/status',
                 timeout=10
             )
             health_data = health_response.json()
@@ -1314,7 +1314,7 @@ def robust_audio_processing(file_path, max_retries=3):
             # Submit audio
             with open(file_path, 'rb') as audio_file:
                 submit_response = requests.post(
-                    'http://localhost:8123/audio/process',
+                    'http://localhost:8125/audio/process',
                     files={'audio': audio_file},
                     data={'language': 'sw', 'background': True},
                     timeout=30
@@ -1329,7 +1329,7 @@ def robust_audio_processing(file_path, max_retries=3):
             for poll in range(max_polls):
                 try:
                     status_response = requests.get(
-                        f'http://localhost:8123/audio/task/{task_id}',
+                        f'http://localhost:8125/audio/task/{task_id}',
                         timeout=10
                     )
                     status_response.raise_for_status()
@@ -1360,7 +1360,7 @@ def robust_audio_processing(file_path, max_retries=3):
             
             # Timeout - cancel task
             try:
-                requests.delete(f'http://localhost:8123/audio/task/{task_id}')
+                requests.delete(f'http://localhost:8125/audio/task/{task_id}')
             except:
                 pass
             
@@ -1403,12 +1403,12 @@ def cancel_task_after_timeout(task_id, timeout_seconds):
     time.sleep(timeout_seconds)
     
     # Check if task is still running
-    response = requests.get(f'http://localhost:8123/audio/task/{task_id}')
+    response = requests.get(f'http://localhost:8125/audio/task/{task_id}')
     status_data = response.json()
     
     if status_data['status'] in ['pending', 'processing']:
         print(f"Task {task_id} timeout, cancelling...")
-        requests.delete(f'http://localhost:8123/audio/task/{task_id}')
+        requests.delete(f'http://localhost:8125/audio/task/{task_id}')
         return True
     
     return False
@@ -1416,7 +1416,7 @@ def cancel_task_after_timeout(task_id, timeout_seconds):
 # Submit task
 with open('recording.wav', 'rb') as audio_file:
     response = requests.post(
-        'http://localhost:8123/audio/process',
+        'http://localhost:8125/audio/process',
         files={'audio': audio_file},
         data={'language': 'sw', 'background': True}
     )
@@ -1434,7 +1434,7 @@ timeout_thread.start()
 
 # Poll for result
 for _ in range(30):
-    response = requests.get(f'http://localhost:8123/audio/task/{task_id}')
+    response = requests.get(f'http://localhost:8125/audio/task/{task_id}')
     status_data = response.json()
     
     if status_data['status'] == 'completed':
@@ -1560,7 +1560,7 @@ for _ in range(30):
 ```python
 def is_system_ready():
     try:
-        response = requests.get('http://localhost:8123/audio/queue/status')
+        response = requests.get('http://localhost:8125/audio/queue/status')
         data = response.json()
         return data['status'] == 'healthy'
     except:
