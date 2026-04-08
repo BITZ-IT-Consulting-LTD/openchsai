@@ -1,8 +1,17 @@
 /**
  * Environment & Taxonomy Registry
- * This registry contains all configuration variables (Endpoints, VOIP, Taxonomy Roots) 
+ * This registry contains all configuration variables (Endpoints, VOIP, Taxonomy Roots)
  * for different countries and deployment environments.
  */
+
+/**
+ * Parse STUN/TURN servers from a comma-separated env variable into ICE server objects.
+ * Falls back to Google STUN servers if no env variable is set.
+ */
+function parseIceServers(envValue) {
+    const raw = envValue || import.meta.env?.VITE_STUN_SERVERS || 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302';
+    return raw.split(',').map(url => ({ urls: url.trim() }));
+}
 
 export const ENVIRONMENT_REGISTRY = {
     // --- TANZANIA CONFIG (Production / Infrastructure) ---
@@ -31,10 +40,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_WS_URL: "wss://192.168.10.3:8089/ws",
             SIP_USER_PREFIX: "0",
             SIP_PASS_PREFIX: "0",
-            ICE_SERVERS: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:192.168.10.3:3479' }
-            ]
+            ICE_SERVERS: parseIceServers(import.meta.env?.VITE_TZ_STUN_SERVERS || 'stun:stun.l.google.com:19302,stun:192.168.10.3:3479')
         },
         ROOTS: {
             CASE_CATEGORY: "362559",
@@ -104,9 +110,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_WS_URL: "wss://192.168.8.13/ws/",
             SIP_USER_PREFIX: "",
             SIP_PASS_PREFIX: import.meta.env?.VITE_SIP_PASS_PREFIX || '',
-            ICE_SERVERS: [
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
+            ICE_SERVERS: parseIceServers()
         },
         ROOTS: {
             CASE_CATEGORY: "362557",
@@ -176,9 +180,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_WS_URL: "wss://192.168.10.119/ws/",
             SIP_USER_PREFIX: "",
             SIP_PASS_PREFIX: import.meta.env?.VITE_SIP_PASS_PREFIX || '',
-            ICE_SERVERS: [
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
+            ICE_SERVERS: parseIceServers()
         },
         ROOTS: {
             CASE_CATEGORY: "362557",
@@ -248,9 +250,7 @@ export const ENVIRONMENT_REGISTRY = {
             SIP_WS_URL: "wss://demo-openchs.bitz-itc.com/ws/",
             SIP_USER_PREFIX: "",
             SIP_PASS_PREFIX: import.meta.env?.VITE_SIP_PASS_PREFIX || '',
-            ICE_SERVERS: [
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
+            ICE_SERVERS: parseIceServers()
         },
         ROOTS: {
             CASE_CATEGORY: "362557",
