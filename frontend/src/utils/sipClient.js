@@ -7,10 +7,9 @@ let activeSession = null; // Ongoing call session
 let incomingSession = null; // Incoming call session
 let eventListeners = {}; // Registered event handlers
 let isInQueue = false; // Queue registration status
-let iceServers = [ // Default ICE servers
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-];
+let iceServers = (process.env.REACT_APP_STUN_SERVERS || 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302')
+    .split(',')
+    .map(url => ({ urls: url.trim() }));
 
 /**
  * Initializes the SIP client using JsSIP and sets up the WebSocket connection.

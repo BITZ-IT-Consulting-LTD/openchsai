@@ -5,8 +5,7 @@
  * that adapt to the active country/environment registry.
  */
 
-// Hardcoded fallbacks
-const DEFAULT_STUN_SERVERS = 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302';
+const DEFAULT_STUN_SERVERS = import.meta.env.VITE_STUN_SERVERS || 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302';
 const DEFAULT_HOST = 'demo-openchs.bitz-itc.com';
 
 /**
