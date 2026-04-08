@@ -9,6 +9,8 @@ It enables **automated transcription, translation, and case classification**, en
 
 ## 🌍 Overview
 
+**OpenCHS** is an open-source, multilingual helpline & case management platform that supports governments and NGOs to deliver 24/7 protection, counseling, and referral services, with AI-powered insights for child protection and social services.
+
 This service is part of the **OpenCHS (Open Child Helpline System)** ecosystem — an open-source Digital Public Good developed and maintained by **BITZ IT Consulting Ltd** in collaboration with UNICEF and government partners across Eastern and Southern Africa.
 
 ---
