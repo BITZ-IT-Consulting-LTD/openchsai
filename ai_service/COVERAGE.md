@@ -1,10 +1,10 @@
 # 📊 Code Coverage Report - AI Service
 
-**Branch:** nelson_private3
-**Commit:** [\`bc7550b\`](https://github.com/openchlai/ai/commit/bc7550b9c71194fed111b2c278c77a0a0fc379ba)
-**Generated:** 2026-02-10 20:16:23 UTC
+**Branch:** fix/externalize-stun-servers-and-upgrade-redis
+**Commit:** [\`e13c880\`](https://github.com/BITZ-IT-Consulting-LTD/openchsai/commit/e13c88033dd039d8ae1e557038c15bdd9d387a6c)
+**Generated:** 2026-04-08 18:17:54 UTC
 **Python Version:** 3.12
-**Workflow:** [\`21880605870\`](https://github.com/openchlai/ai/actions/runs/21880605870)
+**Workflow:** [\`24150985107\`](https://github.com/BITZ-IT-Consulting-LTD/openchsai/actions/runs/24150985107)
 
 ## 🎯 Coverage Summary
 
@@ -87,4 +87,4 @@ TOTAL                                            7876   1346    83%
 
 ---
 *Report generated automatically by GitHub Actions*
-*Access this report at: [COVERAGE.md](https://github.com/openchlai/ai/blob/nelson_private3/ai_service/COVERAGE.md)*
+*Access this report at: [COVERAGE.md](https://github.com/BITZ-IT-Consulting-LTD/openchsai/blob/fix/externalize-stun-servers-and-upgrade-redis/ai_service/COVERAGE.md)*
