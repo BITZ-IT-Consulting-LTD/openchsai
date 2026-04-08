@@ -161,6 +161,9 @@
           placeholder="Select services..." :category-id="taxonomyStore.roots.SERVICE_OFFERED"
           @selection-change="handleServicesChange" />
 
+        <TaxonomyOptions id="referrals-type" label="Referrals" v-model="formData.step3.referralsType"
+          placeholder="Select referrals..." root-key="REFERRAL_TYPE" @selection-change="handleReferralsChange" />
+
         <TaxonomySelect id="know about 116" label="How did you know about 116?" v-model="formData.step3.referralSource"
           placeholder="Select option" root-key="KNOW_ABOUT_116" />
       </div>
@@ -262,6 +265,7 @@
               <option value="">Select</option>
               <option value="1">Open</option>
               <option value="2">Closed</option>
+              <option value="3">Escalated</option>
             </select>
           </div>
 
@@ -316,7 +320,8 @@
 </template>
 
 <script setup>
-  import { ref, reactive, inject, onMounted, computed, watch } from 'vue';
+  import { ref, reactive, inject, onMounted, computed, watch } from 'vue'
+
   import { useRouter } from 'vue-router';
   import { toast } from 'vue-sonner';
 
@@ -330,6 +335,7 @@
   import ReporterModalLegacy from '@/components/case-create/ReporterModalLegacy.vue';
   import CaseInsightsPanel from '@/components/case-create/CaseInsightsPanel.vue';
   import TaxonomySelect from '@/components/base/TaxonomySelect.vue';
+  import TaxonomyOptions from '@/components/base/TaxonomyOptions.vue';
 
   // Stores
   import { useCaseStore } from '@/stores/cases';
@@ -390,6 +396,7 @@
       attachments: [],
       servicesOffered: [],
       referralSource: '',
+      referralsType: [],
       policeDetails: '',
       otherServicesDetails: ''
     }
@@ -487,7 +494,10 @@
   // Services Logic
   const handleServicesChange = (selection) => {
     formData.step3.servicesOffered = selection.values || [];
-    // Handle text logic if needed
+  };
+
+  const handleReferralsChange = (selection) => {
+    formData.step3.referralsType = selection.values || [];
   };
 
   // Legacy Modal Handlers
@@ -575,17 +585,7 @@
 
       const servicesPayload = (formData.step3.servicesOffered || []).map(id => ({ category_id: String(id) }));
 
-      // Handle referral source (single value to array if needed, or if it's already an array?)
-      // CaseCreate uses referralsType for 'referrals' payload. referralSource is for 'knowabout116_id'.
-      // Note: In CaseCreate: 
-      // referralsPayload = (formData.step3.referralsType || [])
-      // And knowabout116_id = formData.step3.referralSource
-
-      // I don't have referralsType in the simplified form UI yet? 
-      // The BaseOptions for servicesOffered handles selection.
-      // If I want to support Referrals field in Legacy Form, I need to expose it.
-      // For now I'll map empty if not present.
-      const referralsPayload = [];
+      const referralsPayload = (formData.step3.referralsType || []).map(id => ({ category_id: String(id) }));
 
       const attachmentsPayload = (formData.step3.attachments || []).map(a => ({
         attachment_id: String(a.id || a.attachment_id || "")
@@ -649,6 +649,28 @@
       isSubmitting.value = false;
     }
   };
+
+  // Watch "Reporter is Client" checkbox — auto-create client from reporter data
+  watch(() => formData.step1.reporterIsClient, async (isClient) => {
+    if (isClient && formData.step1.selectedReporter) {
+      const r = formData.step1.selectedReporter
+      const rk = reporterStore.reporters_k || {}
+      const clientData = {
+        name: r[rk.contact_fullname?.[0]] || r[rk.fname?.[0]] || 'Reporter',
+        phone: r[rk.contact_phone?.[0]] || r[rk.phone?.[0]] || '',
+        age: r[rk.contact_age?.[0]] || r[rk.age?.[0]] || '',
+        sex: r[rk.contact_sex?.[0]] || r[rk.sex_id?.[0]] || '',
+        location: r[rk.contact_location?.[0]] || r[rk.location_id?.[0]] || '',
+        id: r[0] || Date.now()
+      }
+      // Only add if not already in clients list
+      const alreadyAdded = formData.step3.clients.some(c => c.name === clientData.name && c.phone === clientData.phone)
+      if (!alreadyAdded) {
+        formData.step3.clients.push(clientData)
+        toast.success('Reporter added as client')
+      }
+    }
+  })
 
   const cancel = () => {
     router.push('/cases');

@@ -312,6 +312,55 @@ export const useSipStore = defineStore('sip', () => {
         session.info(options)
     }
 
+    async function holdCall(session) {
+        if (!session) return
+        try {
+            const sdh = session.sessionDescriptionHandler
+            if (sdh && sdh.holdModifier) {
+                const options = { sessionDescriptionHandlerModifiers: [sdh.holdModifier] }
+                await session.invite(options)
+            }
+        } catch (err) {
+            console.error('[SIP Store] Hold failed:', err)
+        }
+    }
+
+    async function unholdCall(session) {
+        if (!session) return
+        try {
+            await session.invite()
+        } catch (err) {
+            console.error('[SIP Store] Unhold failed:', err)
+        }
+    }
+
+    function toggleMute(session) {
+        if (!session) return false
+        const pc = session.sessionDescriptionHandler?.peerConnection
+        if (!pc) return false
+        let muted = false
+        pc.getSenders().forEach(s => {
+            if (s.track?.kind === 'audio') {
+                s.track.enabled = !s.track.enabled
+                muted = !s.track.enabled
+            }
+        })
+        return muted
+    }
+
+    async function blindTransfer(session, target) {
+        if (!session || !target) return
+        try {
+            const referTo = SIP.UserAgent.makeURI(`sip:${target}@${config.SIP_HOST}`)
+            if (referTo) {
+                await session.refer(referTo)
+            }
+        } catch (err) {
+            console.error('[SIP Store] Transfer failed:', err)
+            throw err
+        }
+    }
+
     return {
         ua,
         registerer,
@@ -327,6 +376,10 @@ export const useSipStore = defineStore('sip', () => {
         stop,
         makeCall,
         sendDtmf,
+        holdCall,
+        unholdCall,
+        toggleMute,
+        blindTransfer,
         fetchExtension
     }
 })

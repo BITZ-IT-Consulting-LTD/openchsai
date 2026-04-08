@@ -209,6 +209,11 @@ const statusDotClass = computed(() => {
 const errorMessage = computed(() => sipStore.error)
 
 function appendKey(char) {
+  // In-call DTMF mode: send tones instead of appending to dial string
+  if (activeCallStore.callState === 'active' && activeCallStore.currentSession) {
+      sipStore.sendDtmf(activeCallStore.currentSession, char)
+      return
+  }
   if (dialString.value.length < 15) {
       dialString.value += char
   }

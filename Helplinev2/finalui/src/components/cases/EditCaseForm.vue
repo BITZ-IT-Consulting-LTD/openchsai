@@ -118,6 +118,7 @@
                 <option value="">Select status</option>
                 <option value="1">Open</option>
                 <option value="2">Closed</option>
+                <option value="3">Escalated</option>
               </select>
             </div>
           </div>
@@ -406,7 +407,7 @@
   }
 
   // Initialize form data from case
-  onMounted(() => {
+  onMounted(async () => {
     formData.narrative = getCaseValue('narrative') || ''
     formData.plan = getCaseValue('plan') || ''
     formData.case_category_id = getCaseValue('case_category_id') || ''
@@ -424,8 +425,66 @@
     formData.police_ob_no = getCaseValue('police_ob_no') || ''
     formData.national_id_ = getCaseValue('national_id_') || ''
 
-    // TODO: Parse clients, perpetrators, services, attachments, referals from case data
-    // These might be JSON strings or nested arrays - need to check your backend structure
+    // Pre-populate clients, perpetrators, services, attachments from viewCase response
+    const caseId = getCaseValue('id')
+    if (caseId) {
+      try {
+        const { useCaseStore } = await import('@/stores/cases')
+        const casesStore = useCaseStore()
+        const fullCase = await casesStore.viewCase(caseId)
+
+        // Parse clients
+        if (fullCase.clients_case && fullCase.clients_case_k) {
+          const ck = fullCase.clients_case_k
+          formData.clients_case = (fullCase.clients_case || []).map(row => ({
+            id: row[ck.client_id?.[0]] || row[ck.id?.[0]] || '',
+            name: row[ck.fname?.[0]] || row[ck.name?.[0]] || '',
+            age: row[ck.age?.[0]] || '',
+            sex: row[ck.sex_id?.[0]] || '',
+            location: row[ck.location_id?.[0]] || ''
+          }))
+        }
+
+        // Parse perpetrators
+        if (fullCase.perpetrators_case && fullCase.perpetrators_case_k) {
+          const pk = fullCase.perpetrators_case_k
+          formData.perpetrators_case = (fullCase.perpetrators_case || []).map(row => ({
+            id: row[pk.perpetrator_id?.[0]] || row[pk.id?.[0]] || '',
+            name: row[pk.fname?.[0]] || row[pk.name?.[0]] || '',
+            age: row[pk.age?.[0]] || '',
+            sex: row[pk.sex_id?.[0]] || '',
+            location: row[pk.location_id?.[0]] || ''
+          }))
+        }
+
+        // Parse services
+        if (fullCase.services && fullCase.services_k) {
+          const sk = fullCase.services_k
+          formData.services = (fullCase.services || []).map(row =>
+            row[sk.category_id?.[0]] || row[sk.id?.[0]] || ''
+          ).filter(Boolean)
+        }
+
+        // Parse referrals
+        if (fullCase.referals && fullCase.referals_k) {
+          const rk = fullCase.referals_k
+          formData.referals = (fullCase.referals || []).map(row =>
+            row[rk.category_id?.[0]] || row[rk.id?.[0]] || ''
+          ).filter(Boolean)
+        }
+
+        // Parse attachments
+        if (fullCase.attachments_case && fullCase.attachments_case_k) {
+          const ak = fullCase.attachments_case_k
+          formData.attachments_case = (fullCase.attachments_case || []).map(row => ({
+            id: row[ak.attachment_id?.[0]] || row[ak.id?.[0]] || '',
+            name: row[ak.filename?.[0]] || row[ak.name?.[0]] || 'Attachment'
+          }))
+        }
+      } catch (e) {
+        console.warn('Failed to pre-populate case details:', e)
+      }
+    }
   })
 
   // Accordion toggle

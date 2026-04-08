@@ -41,10 +41,12 @@
           ? 'bg-black/40 border-transparent' 
           : 'bg-gray-50 border-transparent'"
       >
-        <div 
+        <div
           class="grid gap-3 text-xs font-semibold uppercase tracking-wide"
           :class="isDarkMode ? 'text-gray-400' : 'text-gray-700'"
-          style="grid-template-columns: 60px 140px 90px 70px 70px 90px 120px 1fr;"
+          :style="showActions
+            ? 'grid-template-columns: 60px 140px 90px 70px 70px 90px 120px 1fr 48px;'
+            : 'grid-template-columns: 60px 140px 90px 70px 70px 90px 120px 1fr;'"
         >
           <div>Ext.</div>
           <div>Name</div>
@@ -54,6 +56,7 @@
           <div>Talk Time</div>
           <div>Status</div>
           <div>Duration</div>
+          <div v-if="showActions"></div>
         </div>
       </div>
 
@@ -83,23 +86,25 @@
             ? 'border-transparent/50 hover:bg-neutral-800' 
             : 'border-transparent hover:bg-gray-50'"
         >
-          <div 
+          <div
             class="grid gap-3 text-sm items-center"
-            style="grid-template-columns: 60px 140px 90px 70px 70px 90px 120px 1fr;"
+            :style="showActions
+              ? 'grid-template-columns: 60px 140px 90px 70px 70px 90px 120px 1fr 48px;'
+              : 'grid-template-columns: 60px 140px 90px 70px 70px 90px 120px 1fr;'"
           >
-            <div 
+            <div
               class="font-medium"
               :class="isDarkMode ? 'text-gray-300' : 'text-gray-900'"
             >
               {{ counsellor.extension }}
             </div>
-            <div 
+            <div
               class="truncate"
               :class="isDarkMode ? 'text-gray-300' : 'text-gray-900'"
             >
               {{ counsellor.name }}
             </div>
-            <div 
+            <div
               class="truncate"
               :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'"
             >
@@ -122,6 +127,12 @@
             <div :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'">
               {{ counsellor.duration || '--' }}
             </div>
+            <div v-if="showActions" class="flex justify-center">
+              <SupervisorActions
+                :channel="counsellor.channelData?.CHAN_CHAN || counsellor.id"
+                :agent-name="counsellor.name || counsellor.extension"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -130,10 +141,15 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, watch, nextTick, inject } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, inject, computed } from 'vue'
+import SupervisorActions from '@/components/wallboard/SupervisorActions.vue'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
   name: 'CounsellorsTable',
+  components: {
+    SupervisorActions
+  },
   props: {
     counsellors: {
       type: Array,
@@ -148,6 +164,8 @@ export default {
   },
   setup(props) {
     const isDarkMode = inject('isDarkMode')
+    const authStore = useAuthStore()
+    const showActions = computed(() => authStore.isSupervisor || authStore.isAdministrator)
     const tableContainer = ref(null)
     let scrollInterval = null
 
@@ -209,7 +227,9 @@ export default {
 
     return {
       isDarkMode,
-      tableContainer
+      tableContainer,
+      showActions,
+      authStore
     }
   },
   methods: {

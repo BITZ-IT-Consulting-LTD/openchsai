@@ -80,11 +80,17 @@
             >
               Supervisor
             </th>
-            <th 
+            <th
               class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider"
               :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'"
             >
               Created On
+            </th>
+            <th
+              class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider"
+              :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'"
+            >
+              Actions
             </th>
           </tr>
         </thead>
@@ -206,11 +212,25 @@
             </td>
 
             <!-- Created On -->
-            <td 
+            <td
               class="px-6 py-4 text-sm whitespace-nowrap"
               :class="isDarkMode ? 'text-gray-400' : 'text-gray-600'"
             >
               {{ formatTimestamp(qa[qas_k.created_on[0]]) }}
+            </td>
+
+            <!-- Actions -->
+            <td class="px-6 py-4 text-sm whitespace-nowrap">
+              <button
+                @click.stop="$emit('view-qa', qa)"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 border"
+                :class="isDarkMode
+                  ? 'bg-amber-600/20 text-amber-500 border-amber-600/30 hover:bg-amber-600/30'
+                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'"
+              >
+                <i-mdi-eye-outline class="w-4 h-4" />
+                View
+              </button>
             </td>
           </tr>
         </tbody>
@@ -248,6 +268,8 @@ defineProps({
     required: true,
   },
 })
+
+defineEmits(['view-qa'])
 
 // Inject theme
 const isDarkMode = inject('isDarkMode')

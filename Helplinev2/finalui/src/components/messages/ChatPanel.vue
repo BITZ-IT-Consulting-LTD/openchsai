@@ -102,8 +102,33 @@
       </div>
     </div>
 
-    <!-- Message Input -->
-    <MessageInput v-model="newMessage" @send-message="handleSendMessage" />
+    <!-- Preset Replies -->
+    <div v-if="showPresetDropdown" class="border-t px-4 py-2 max-h-48 overflow-y-auto"
+      :class="isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-gray-50 border-gray-200'">
+      <div v-for="(reply, idx) in presetReplies" :key="idx"
+        @click="selectPresetReply(reply)"
+        class="px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors mb-1"
+        :class="isDarkMode
+          ? 'text-gray-300 hover:bg-neutral-800'
+          : 'text-gray-700 hover:bg-gray-100'">
+        {{ reply }}
+      </div>
+    </div>
+
+    <!-- Preset Toggle + Message Input -->
+    <div class="border-t" :class="isDarkMode ? 'border-neutral-800' : 'border-gray-200'">
+      <div class="px-4 pt-2">
+        <button @click="showPresetDropdown = !showPresetDropdown"
+          class="text-xs font-medium flex items-center gap-1 mb-1 transition-colors"
+          :class="isDarkMode
+            ? 'text-amber-500 hover:text-amber-400'
+            : 'text-amber-700 hover:text-amber-600'">
+          <i-mdi-lightning-bolt class="w-3.5 h-3.5" />
+          {{ showPresetDropdown ? 'Hide' : 'Quick Replies' }}
+        </button>
+      </div>
+      <MessageInput v-model="newMessage" @send-message="handleSendMessage" />
+    </div>
   </div>
 </template>
 
@@ -134,6 +159,23 @@
   const newMessage = ref(props.newMessage)
   const conversationHistory = ref([])
   const isLoadingHistory = ref(false)
+  const showPresetDropdown = ref(false)
+
+  const presetReplies = [
+    'Thank you for contacting us. How can I help you today?',
+    'Please hold while I look into this for you.',
+    'Could you please provide more details about your concern?',
+    'I understand your situation. Let me connect you with the right department.',
+    'Thank you for your patience. Is there anything else I can help with?',
+    'For emergencies, please call 116 directly.',
+    'Your case has been registered. You will receive a follow-up call.',
+    'I am transferring you to a specialist who can better assist you.'
+  ]
+
+  const selectPresetReply = (reply) => {
+    newMessage.value = reply
+    showPresetDropdown.value = false
+  }
 
   // Inject theme
   const isDarkMode = inject('isDarkMode')

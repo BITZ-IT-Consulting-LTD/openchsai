@@ -33,10 +33,10 @@
           v-for="qa in group" 
           :key="getFieldValue(qa, 'id')"
           class="p-6 transition-all duration-200 cursor-pointer"
-          :class="isDarkMode 
-            ? 'hover:bg-neutral-800' 
+          :class="isDarkMode
+            ? 'hover:bg-neutral-800'
             : 'hover:bg-gray-50'"
-          @click="viewQADetails(qa)"
+          @click="$emit('view-qa', qa)"
         >
           <div class="flex items-start gap-4">
             <!-- Icon & Score -->
@@ -179,9 +179,8 @@
 
 <script setup>
 import { computed, inject } from 'vue'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
+const emit = defineEmits(['view-qa'])
 
 const props = defineProps({
   qas: {
@@ -290,11 +289,4 @@ const formatTimestamp = (timestamp) => {
   })
 }
 
-// View QA details
-const viewQADetails = (qa) => {
-  const qaId = getFieldValue(qa, 'id')
-  console.log('Viewing QA details for:', qaId)
-  // Navigate to QA details page if needed
-  // router.push({ name: 'QADetails', params: { id: qaId } })
-}
 </script>

@@ -257,7 +257,8 @@ function parseRows(rows = [], k = {}, ctx = [], isSearchMode = false) {
     
     if (isSearchMode) {
         const nodeMap = new Map()
-        
+        const parentIdx = Number(k.parent_id?.[0] ?? -1)
+
         const addToMap = (r) => {
             if (!r) return
             const id = Number(r[idIdx])

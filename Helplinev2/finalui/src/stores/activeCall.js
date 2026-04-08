@@ -16,6 +16,8 @@ export const useActiveCallStore = defineStore('activeCall', () => {
     const startedAt = ref(null)
     const durationSeconds = ref(0)
     const hasAudioTrack = ref(false)
+    const isOnHold = ref(false)
+    const isMuted = ref(false)
     const autoAnswerEnabled = ref(localStorage.getItem('sip_auto_answer') === 'true')
     const awaitingQueueConfirmation = ref(false)
     let isQueueConfirmationCall = false
@@ -207,6 +209,30 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         }
     }
 
+    async function toggleHold() {
+        const sipStore = (await import('./sip')).useSipStore()
+        if (!currentSession.value) return
+        if (isOnHold.value) {
+            await sipStore.unholdCall(currentSession.value)
+            isOnHold.value = false
+        } else {
+            await sipStore.holdCall(currentSession.value)
+            isOnHold.value = true
+        }
+    }
+
+    async function toggleMute() {
+        const sipStore = (await import('./sip')).useSipStore()
+        if (!currentSession.value) return
+        isMuted.value = sipStore.toggleMute(currentSession.value)
+    }
+
+    async function blindTransfer(target) {
+        const sipStore = (await import('./sip')).useSipStore()
+        if (!currentSession.value || !target) return
+        await sipStore.blindTransfer(currentSession.value, target)
+    }
+
     // Called by SIP store when session terminates (remote hangup or BYE confirmed)
     function onCallTerminated() {
         // Don't override wrapup or idle states
@@ -233,10 +259,12 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         currentSession.value = null
         callState.value = 'wrapup'
         hasAudioTrack.value = false
+        isOnHold.value = false
+        isMuted.value = false
         // Keep callerNumber/callid for reference during wrapup
-        // Auto-clear after 30 seconds
+        // Auto-clear after 200 seconds (allows time for AI insights to arrive)
         if (wrapupTimer) clearTimeout(wrapupTimer)
-        wrapupTimer = setTimeout(() => endWrapup(), 30000)
+        wrapupTimer = setTimeout(() => endWrapup(), 200000)
     }
 
     function endWrapup() {
@@ -269,6 +297,8 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         startedAt.value = null
         durationSeconds.value = 0
         hasAudioTrack.value = false
+        isOnHold.value = false
+        isMuted.value = false
         clearAiInsights()
     }
 
@@ -542,6 +572,11 @@ export const useActiveCallStore = defineStore('activeCall', () => {
         setBridgeId,
         addAiInsight,
         clearAiInsights,
+        isOnHold,
+        isMuted,
+        toggleHold,
+        toggleMute,
+        blindTransfer,
         autoAnswerEnabled,
         awaitingQueueConfirmation,
         toggleAutoAnswer,

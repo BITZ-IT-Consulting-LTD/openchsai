@@ -130,6 +130,20 @@ export const useQAStore = defineStore('qa', {
       this.pagination.rangeEnd = this.pagination.limit
     },
 
+    // Get Analytics (Stateless — does not mutate store)
+    async getAnalytics(params = {}) {
+      try {
+        const queryParams = { _c: 1000, _o: 0, _a: 0, ...params }
+        const { data } = await axiosInstance.get('api/qas/', {
+          params: queryParams,
+          headers: this.getAuthHeaders()
+        })
+        return data
+      } catch (err) {
+        throw new Error(err.message || 'Failed to fetch QA analytics')
+      }
+    },
+
     async createQA(payload) {
       try {
         this.loading = true

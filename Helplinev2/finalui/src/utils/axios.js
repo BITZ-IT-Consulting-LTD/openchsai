@@ -22,9 +22,9 @@ axiosInstance.interceptors.response.use(
     (error) => {
         const status = error.response?.status;
 
-        // 401 Unauthorized - redirect to login
-        if (status === 401) {
-            console.warn('⚠️ Session expired or unauthorized. Redirecting to login.');
+        // 401 Unauthorized or 403 Forbidden - redirect to login
+        if (status === 401 || status === 403) {
+            console.warn(`⚠️ ${status === 401 ? 'Session expired or unauthorized' : 'Forbidden'}. Redirecting to login.`);
 
             // Clear local storage to prevent authentication loops
             localStorage.removeItem('session-id');

@@ -49,8 +49,8 @@
 
           <button @click="refreshQA" :disabled="qaStore.loading"
             class="px-5 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm border disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="isDarkMode 
-              ? 'bg-black text-gray-300 border-transparent hover:border-green-500 hover:text-green-400' 
+            :class="isDarkMode
+              ? 'bg-black text-gray-300 border-transparent hover:border-green-500 hover:text-green-400'
               : 'bg-white text-gray-700 border-transparent hover:border-green-600 hover:text-green-700'"
           >
             <i-mdi-refresh class="w-5 h-5" />
@@ -61,12 +61,12 @@
 
       <!-- Timeline view -->
       <div v-if="currentView === 'timeline'">
-        <QATimeline :qas="qaStore.qas" :qas_k="qaStore.qas_k" />
+        <QATimeline :qas="qaStore.qas" :qas_k="qaStore.qas_k" @view-qa="openQADetail" />
       </div>
 
       <!-- Table view -->
       <div v-if="currentView === 'table'">
-        <QasTable :qas="qaStore.qas" :qas_k="qaStore.qas_k" />
+        <QasTable :qas="qaStore.qas" :qas_k="qaStore.qas_k" @view-qa="openQADetail" />
       </div>
 
       <!-- Pagination Controls -->
@@ -74,6 +74,14 @@
         :hasPrevPage="qaStore.hasPrevPage" :loading="qaStore.loading" :pageSize="selectedPageSize" @prev="goToPrevPage"
         @next="goToNextPage" @goToPage="goToPage" @changePageSize="changePageSize" />
     </div>
+
+    <!-- QA Detail Drawer -->
+    <QADetailDrawer
+      :isOpen="qaDetailOpen"
+      :qaRecord="selectedQaRecord"
+      :qas_k="qaStore.qas_k"
+      @close="closeQADetail"
+    />
 
   </div>
 </template>
@@ -85,12 +93,27 @@
   import QasTable from '@/components/qas/QasTable.vue'
   import QATimeline from '@/components/qas/QATimeline.vue'
   import QAFilter from '@/components/qas/QAFilter.vue'
+  import QADetailDrawer from '@/components/qas/QADetailDrawer.vue'
   import Pagination from '@/components/base/Pagination.vue'
 
   const qaStore = useQAStore()
   const currentView = ref('timeline')
   const currentFilters = ref({})
   const selectedPageSize = ref(20)
+
+  // QA Detail Drawer state
+  const qaDetailOpen = ref(false)
+  const selectedQaRecord = ref(null)
+
+  const openQADetail = (qaRecord) => {
+    selectedQaRecord.value = qaRecord
+    qaDetailOpen.value = true
+  }
+
+  const closeQADetail = () => {
+    qaDetailOpen.value = false
+    selectedQaRecord.value = null
+  }
 
   // Inject theme
   const isDarkMode = inject('isDarkMode')

@@ -1,10 +1,10 @@
 # 📊 Code Coverage Report - AI Service
 
-**Branch:** nelson_private3
-**Commit:** [\`bc7550b\`](https://github.com/openchlai/ai/commit/bc7550b9c71194fed111b2c278c77a0a0fc379ba)
-**Generated:** 2026-02-10 20:16:23 UTC
+**Branch:** fix--helpline-v2-updates
+**Commit:** [\`ad27c85\`](https://github.com/openchlai/ai/commit/ad27c85ca8afdf52b89552930a4f8d99793774a1)
+**Generated:** 2026-03-13 14:14:29 UTC
 **Python Version:** 3.12
-**Workflow:** [\`21880605870\`](https://github.com/openchlai/ai/actions/runs/21880605870)
+**Workflow:** [\`23054562172\`](https://github.com/openchlai/ai/actions/runs/23054562172)
 
 ## 🎯 Coverage Summary
 
@@ -87,4 +87,4 @@ TOTAL                                            7876   1346    83%
 
 ---
 *Report generated automatically by GitHub Actions*
-*Access this report at: [COVERAGE.md](https://github.com/openchlai/ai/blob/nelson_private3/ai_service/COVERAGE.md)*
+*Access this report at: [COVERAGE.md](https://github.com/openchlai/ai/blob/fix--helpline-v2-updates/ai_service/COVERAGE.md)*

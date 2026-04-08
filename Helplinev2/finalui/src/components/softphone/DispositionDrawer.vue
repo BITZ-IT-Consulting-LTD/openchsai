@@ -131,11 +131,17 @@
     const submit = async () => {
         console.log('Disposing call', props.callId, selected.value, notes.value)
         try {
-            // Placeholder for real API submission logic if needed
+            await axiosInstance.post('api/dispositions/', {
+                call_id: props.callId,
+                outcome: selected.value,
+                notes: notes.value,
+                reporter_phone: props.phone
+            })
             toast.success('Disposition Saved')
             emit('close')
             emit('submit', { reason: selected.value, notes: notes.value })
         } catch (e) {
+            console.error('Failed to save disposition:', e)
             toast.error('Failed to save disposition')
         }
     }
