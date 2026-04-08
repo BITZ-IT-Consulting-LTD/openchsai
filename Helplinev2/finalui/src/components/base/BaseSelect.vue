@@ -233,8 +233,9 @@ async function loadLevel(categoryId, isRoot = true) {
   if (!categoryId) return []
   try {
     loading.value = true
-    await store.viewCategory(categoryId)
-    const parsedOptions = parseRows(store.subcategories, store.subcategories_k, store.subcategories_ctx, false)
+    const data = await store.viewCategory(categoryId)
+    if (!data) return []
+    const parsedOptions = parseRows(data.items, data.keys, data.context, false)
 
     if (isRoot) {
       levelOptions.value = parsedOptions
@@ -357,15 +358,15 @@ watch(searchQuery, (newVal) => {
                  params.root_id_ = props.categoryId
              }
 
-            await store.searchSubcategories(params)
-            
+            const result = await store.searchSubcategories(params)
+
             // Custom parsing for Search Results to include Hierarchy
-            const k = store.subcategories_k
+            const k = result.keys
             const nameIdx = Number(k.name?.[0] ?? 5)
-            const parentFullnameIdx = Number(k.category_fullname?.[0] ?? 10) 
+            const parentFullnameIdx = Number(k.category_fullname?.[0] ?? 10)
             const idIdx = Number(k.id?.[0] ?? 0)
 
-            const rawOptions = (store.subcategories || []).map(row => {
+            const rawOptions = (result.items || []).map(row => {
                 const id = row[idIdx]
                 const name = row[nameIdx]
                 const parentFullname = row[parentFullnameIdx]
@@ -425,8 +426,8 @@ async function handleOptionClick(option) {
   // Normal navigation mode - check for children
   if (option.hasChildren === null) {
     try {
-      await store.viewCategory(option.id)
-      option.hasChildren = store.subcategories && store.subcategories.length > 0
+      const data = await store.viewCategory(option.id)
+      option.hasChildren = data?.items && data.items.length > 0
     } catch {
       option.hasChildren = false
     }
