@@ -1,3 +1,9 @@
+# NOTE: The deploy-staging job was removed after run #21183947300 (2026-01-20)
+# failed due to SSH connectivity issues with the staging server. Staging
+# deployment is now handled outside of this pipeline. If staging CI/CD is
+# restored, add a new job here with valid SSH secrets and server configuration.
+# The orphaned "staging" environment on GitHub can be deleted via repo Settings
+# > Environments.
 name: HelplineV1 CI/CD Pipeline
 permissions:
   contents: write

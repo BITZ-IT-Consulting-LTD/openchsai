@@ -4,7 +4,7 @@ import { defineConfig } from 'vitepress'
 const isProd = process.env.NODE_ENV === 'production'
 
 export default defineConfig({
-    base: '/',  // Use root path to avoid CSS loading issues
+    base: '/openchsai/',
     title: "OPENCHSAI",
     description: "A Child Helpline System",
     ignoreDeadLinks: true,
